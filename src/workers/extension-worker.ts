@@ -1,8 +1,6 @@
 import { Observable, debounceTime } from "rxjs";
-import type { ExtensionMessageRequest } from "../typings/message";
 
 chrome.action.onClicked.addListener(handleActionClick);
-chrome.runtime.onMessage.addListener(handleExtensionMessage);
 chrome.runtime.onInstalled.addListener(handleExtensionInstall);
 chrome.runtime.onStartup.addListener(handleBrowserStart);
 chrome.commands.onCommand.addListener(handleCommand);
@@ -265,10 +263,6 @@ function hasId(tab: chrome.tabs.Tab): tab is chrome.tabs.Tab & { id: number } {
 
 function handleActionClick() {
   chrome.runtime.openOptionsPage();
-}
-
-async function handleExtensionMessage(message: ExtensionMessageRequest) {
-  console.log("[worker] received message", message);
 }
 
 async function handleExtensionInstall() {
