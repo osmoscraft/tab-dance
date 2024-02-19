@@ -24,6 +24,5 @@
     "page": "options.html",
     "open_in_tab": true
   },
-  "host_permissions": ["https://*/*", "http://*/*"],
-  "permissions": ["offscreen", "storage", "history"]
+  "permissions": ["offscreen", "tabs", "tabGroups"]
 }

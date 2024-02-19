@@ -10,9 +10,93 @@ chrome.runtime.onInstalled.addListener(handleExtensionInstall);
 chrome.runtime.onStartup.addListener(handleBrowserStart);
 (globalThis.self as any as ServiceWorkerGlobalScope).addEventListener("fetch", handleFetchEvent);
 
-chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-  console.log(`[worker] tab updated [${tabId}]: ${changeInfo.status} [${tab.url}`)
-})
+chrome.tabs.onCreated.addListener((tab) => {
+  // TBD
+});
+chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
+  if (changeInfo.status !== "complete") return; // if user is dragging
+  console.log(`[worker] tab updated [${tabId}]: ${changeInfo.status} ${tab.url}`);
+  if (!tab.url) return; // TBD: do we need to remove tabs e.g. when current tab is replaced by blank url?
+
+  const { protocol, host } = await Promise.resolve()
+    .then(() => new URL(tab.url!))
+    .then((url) => ({ protocol: url.protocol ?? "", host: url.host ?? "" }))
+    .catch(() => ({ protocol: "", host: "" })); // empty host should not match any tabs
+
+  const [hostSharingTabs, groupSharingTabs] = await Promise.all([
+    findTabsByHost(protocol, host),
+    getTabsByGroupId(tab.groupId),
+  ]);
+
+  console.log({ hostSharingTabs, groupSharingTabs });
+
+  const adjustableTabs = [...hostSharingTabs, ...groupSharingTabs].filter(
+    (tab, index, array) => array.indexOf(tab) === index,
+  );
+  const groupIdToHost = new Map<number, string>(); // groupId must NOT be TAB_GROUP_ID_NONE
+  const hostToGroupId = new Map<string, number>();
+  const floatingTabs = [] as chrome.tabs.Tab[];
+
+  for (const tab of adjustableTabs) {
+    const tabHost = urlToHost(tab.url!); // tab.url is guaranteed to be non-empty
+    const groupHost = groupIdToHost.get(tab.groupId);
+
+    if (groupHost !== tabHost) {
+      floatingTabs.push(tab);
+      continue;
+    }
+
+    groupIdToHost.set(tab.groupId, groupHost);
+    hostToGroupId.set(groupHost, tab.groupId);
+  }
+
+  console.log({ groupIdToHost, hostToGroupId });
+
+  for (const tab of floatingTabs) {
+    const tabHost = urlToHost(tab.url!); // tab.url is guaranteed to be non-empty
+    const groupId = hostToGroupId.get(tabHost);
+
+    const mergedGroupId = await chrome.tabs.group({ tabIds: hostSharingTabs.map((tab) => tab.id), groupId });
+    hostToGroupId.set(tabHost, mergedGroupId);
+
+    chrome.tabGroups.update(mergedGroupId, { title: tabHost });
+  }
+});
+
+// in the current window, find all tabs with the same host
+async function findTabsByHost(protocol: string, host: string) {
+  const tabIds = await chrome.tabs
+    .query({
+      currentWindow: true,
+      url: `${protocol}//${host}/*`,
+    })
+    .then((tabs) => {
+      console.log("tabs", tabs);
+      const validTabs = tabs.filter(hasId);
+      return validTabs;
+    });
+
+  return tabIds;
+}
+
+async function getTabsByGroupId(groupId: number) {
+  if (groupId === chrome.tabGroups.TAB_GROUP_ID_NONE) return [];
+
+  const tabs = await chrome.tabs.query({ currentWindow: true, groupId });
+  return tabs.filter(hasId);
+}
+
+function urlToHost(url: string) {
+  try {
+    return new URL(url).host;
+  } catch {
+    return "";
+  }
+}
+
+function hasId(tab: chrome.tabs.Tab): tab is chrome.tabs.Tab & { id: number } {
+  return tab.id !== undefined;
+}
 
 function handleActionClick() {
   const readerPageUrl = new URL(chrome.runtime.getURL("app.html"));
