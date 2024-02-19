@@ -46,6 +46,8 @@ async function handleTabUpdated(tabId: number, changeInfo: chrome.tabs.TabChange
   const groupId = await chrome.tabs.group({ tabIds: tabId, groupId: newGroupId });
 
   chrome.tabGroups.update(groupId, { title: getGroupTitle(identitySharingTabs) });
+
+  chrome.tabGroups.move(groupId, { index: 0 }); // move group to start
 }
 
 async function handleCommand(command: string) {
