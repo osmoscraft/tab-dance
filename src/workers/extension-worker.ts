@@ -28,39 +28,14 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
     getTabsByGroupId(tab.groupId),
   ]);
 
-  console.log({ hostSharingTabs, groupSharingTabs });
+  const uniqueHostsInGroup = new Set(groupSharingTabs.map((tab) => tab.url ?? "").map((url) => urlToHost(url)));
+  const invalidGroupIds = uniqueHostsInGroup.size > 1 ? [tab.groupId] : [];
+  invalidGroupIds.push(chrome.tabGroups.TAB_GROUP_ID_NONE);
 
-  const adjustableTabs = [...hostSharingTabs, ...groupSharingTabs].filter(
-    (tab, index, array) => array.indexOf(tab) === index,
-  );
-  const groupIdToHost = new Map<number, string>(); // groupId must NOT be TAB_GROUP_ID_NONE
-  const hostToGroupId = new Map<string, number>();
-  const floatingTabs = [] as chrome.tabs.Tab[];
+  const newGroupId = hostSharingTabs.findLast((tab) => !invalidGroupIds.includes(tab.groupId))?.groupId;
+  const groupId = await chrome.tabs.group({ tabIds: tabId, groupId: newGroupId });
 
-  for (const tab of adjustableTabs) {
-    const tabHost = urlToHost(tab.url!); // tab.url is guaranteed to be non-empty
-    const groupHost = groupIdToHost.get(tab.groupId);
-
-    if (groupHost !== tabHost) {
-      floatingTabs.push(tab);
-      continue;
-    }
-
-    groupIdToHost.set(tab.groupId, groupHost);
-    hostToGroupId.set(groupHost, tab.groupId);
-  }
-
-  console.log({ groupIdToHost, hostToGroupId });
-
-  for (const tab of floatingTabs) {
-    const tabHost = urlToHost(tab.url!); // tab.url is guaranteed to be non-empty
-    const groupId = hostToGroupId.get(tabHost);
-
-    const mergedGroupId = await chrome.tabs.group({ tabIds: hostSharingTabs.map((tab) => tab.id), groupId });
-    hostToGroupId.set(tabHost, mergedGroupId);
-
-    chrome.tabGroups.update(mergedGroupId, { title: tabHost });
-  }
+  chrome.tabGroups.update(groupId, { title: host });
 });
 
 // in the current window, find all tabs with the same host
