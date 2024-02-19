@@ -19,6 +19,7 @@ async function handleTabUpdated(tabId: number, changeInfo: chrome.tabs.TabChange
   console.log(`[worker] tab updated [${tabId}]: ${changeInfo.status} ${tab.url}`);
   if (!tab.url) return; // TBD: do we need to remove tabs e.g. when current tab is replaced by blank url?
 
+  // TODO New Tab Page cannot be removed
   const identicalTab = await findIdenticalTab(tab);
   if (identicalTab) {
     console.log(`[worker] found identical tab [${identicalTab.id}]: ${identicalTab.url}`);
@@ -74,6 +75,26 @@ async function handleCommand(command: string) {
             .then((tabs) => chrome.tabs.remove(tabs.map((tab) => tab.id!))),
         ),
       );
+      break;
+    }
+    case "highlight-previous-group":
+    case "highlight-next-group": {
+      const tabs = await chrome.tabs.query({ currentWindow: true });
+
+      const groups = [...groupToMapBy(tabs, (tab) => tab.groupId.toString()).entries()].map(([groupId, tabs]) => ({
+        groupId,
+        tabs: tabs ?? [],
+        highlighted: (tabs ?? []).some((tab) => tab.highlighted),
+      }));
+
+      if (command === "highlight-previous-group") groups.reverse();
+
+      const highlightedGroupIndex = groups.findIndex((group) => group.highlighted);
+      const nextGroupIndex = (highlightedGroupIndex + 1) % groups.length;
+      console.log({ highlightedGroupIndex, nextGroupIndex });
+      const nextGroupHeadTabIndex = groups.at(nextGroupIndex)?.tabs.at(0)?.index ?? 0;
+      await chrome.tabs.highlight({ tabs: nextGroupHeadTabIndex });
+
       break;
     }
   }
@@ -223,4 +244,17 @@ async function handleExtensionInstall() {
 
 async function handleBrowserStart() {
   await setupOffscreenDocument(backgroundPageParameters);
+}
+
+// TODO replace with native Map.prototype.groupBy in TypeScript 5.4
+function groupToMapBy<T>(array: T[], key: (item: T) => string) {
+  const map = array.reduce((map, item) => {
+    const group = key(item);
+    const list = map.get(group) ?? [];
+    list.push(item);
+    map.set(group, list);
+    return map;
+  }, new Map<string, T[]>());
+
+  return map;
 }

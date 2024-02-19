@@ -30,7 +30,19 @@
         "default": "Ctrl+Shift+W",
         "mac": "Command+Shift+W"
       },
-      "description": "Close all tabs in the current group"
+      "description": "Close current group"
+    },
+    "highlight-next-group": {
+      "suggested_key": {
+        "default": "Ctrl+Down"
+      },
+      "description": "Highlight next group"
+    },
+    "highlight-previous-group": {
+      "suggested_key": {
+        "default": "Ctrl+Up"
+      },
+      "description": "Highlight previous group"
     }
   },
   "permissions": ["offscreen", "tabs", "tabGroups", "favicon", "commands"]
