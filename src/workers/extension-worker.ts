@@ -44,12 +44,19 @@ async function handleTabUpdated(tabId: number, changeInfo: chrome.tabs.TabChange
   const uniqueGroups = new Set(identitySharingTabs.filter(isGroupedTab).map((tab) => tab.groupId));
   if (uniqueGroups.size > 1) invalidGroupIds.add(tab.groupId);
 
-  const newGroupId = identitySharingTabs.findLast((tab) => !invalidGroupIds.has(tab.groupId))?.groupId;
-  const groupId = await chrome.tabs.group({ tabIds: tabId, groupId: newGroupId });
+  const validIdentitySharingTabs = identitySharingTabs.filter((tab) => !invalidGroupIds.has(tab.groupId));
+  const newGroupId = validIdentitySharingTabs.at(-1)?.groupId;
+
+  /* move tab to group front */
+  if (tab.highlighted) {
+    await chrome.tabs.move(tabId, { index: 0 });
+  }
+  const groupId = await chrome.tabs.group({ tabIds: [tabId], groupId: newGroupId });
 
   chrome.tabGroups.update(groupId, { title: getGroupTitle(identitySharingTabs) });
 
-  chrome.tabGroups.move(groupId, { index: 0 }); // move group to start
+  /* move group to window front */
+  chrome.tabGroups.move(groupId, { index: 0 });
 }
 
 async function handleCommand(command: string) {
