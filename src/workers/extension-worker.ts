@@ -21,8 +21,7 @@ const $tabHighlighted = new Observable<chrome.tabs.TabHighlightInfo>((subscriber
 $tabHighlighted.pipe(debounceTime(2000)).subscribe(handleTabHighlighted);
 
 async function handleTabHighlighted(_highlightInfo: chrome.tabs.TabHighlightInfo) {
-  const tab = await chrome.tabs.query({ currentWindow: true, highlighted: true }).then((tabs) => tabs[0]);
-  console.log({ tab });
+  const highlightedTab = await chrome.tabs.query({ currentWindow: true, highlighted: true }).then((tabs) => tabs[0]);
 
   // rotate highlighted tab group to the front of the window
   const tabs = await chrome.tabs.query({ currentWindow: true });
@@ -40,6 +39,16 @@ async function handleTabHighlighted(_highlightInfo: chrome.tabs.TabHighlightInfo
   await Promise.allSettled(groupsBeforeHighlighted.map((group) => chrome.tabGroups.move(group.groupId, { index: -1 })));
 
   // rotate highlighted tab to the front of the group
+
+  const tabsInGroup = await chrome.tabs.query({ currentWindow: true, groupId: highlightedTab.groupId });
+  const tabsBeforeHighlighted = tabsInGroup.slice(
+    0,
+    tabsInGroup.findIndex((tab) => tab.highlighted),
+  );
+
+  await Promise.allSettled(
+    tabsBeforeHighlighted.map((tab) => chrome.tabs.move(tab.id!, { index: tabsInGroup.length - 1 })),
+  );
 }
 
 async function handleTabUpdated(tabId: number, changeInfo: chrome.tabs.TabChangeInfo, tab: chrome.tabs.Tab) {
@@ -85,9 +94,6 @@ async function handleTabUpdated(tabId: number, changeInfo: chrome.tabs.TabChange
   const groupId = await chrome.tabs.group({ tabIds: [tabId], groupId: newGroupId });
 
   chrome.tabGroups.update(groupId, { title: getGroupTitle(identitySharingTabs) });
-
-  /* move group to window front */
-  // chrome.tabGroups.move(groupId, { index: 0 });
 }
 
 async function handleCommand(command: string) {
