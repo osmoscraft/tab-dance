@@ -23,6 +23,8 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
     .then((url) => ({ protocol: url.protocol ?? "", host: url.host ?? "" }))
     .catch(() => ({ protocol: "", host: "" })); // empty host should not match any tabs
 
+  // TODO merge with shortest common host
+
   const [hostSharingTabs, groupSharingTabs] = await Promise.all([
     findTabsByHost(protocol, host),
     getTabsByGroupId(tab.groupId),
