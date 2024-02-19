@@ -1,0 +1,27 @@
+{
+  "name": "browser-extension-starter",
+  "private": true,
+  "version": "0.0.0",
+  "scripts": {
+    "dev": "rm -rf dist && concurrently --raw npm:dev:*",
+    "build": "rm -rf dist && concurrently --raw npm:build:* && npm run pack",
+    "dev:pages": "npm run build:pages -- --watch",
+    "dev:assets": "npm run build:assets -- --watch",
+    "dev:worker": "npm run build:worker -- --watch --sourcemap=inline",
+    "build:pages": "esbuild src/pages/*.ts --sourcemap --loader:.html=text --loader:.yaml=text --bundle --outdir=dist/unpacked",
+    "build:assets": "node scripts/copy-assets.js --src public --target dist/unpacked",
+    "build:worker": "esbuild src/workers/*.ts  --loader:.html=text --format=esm --bundle --outdir=dist/unpacked",
+    "pack": "node scripts/pack.js --dir dist/unpacked",
+    "test": "tsx ./src/index.test.ts"
+  },
+  "type": "module",
+  "devDependencies": {
+    "@types/chrome": "^0.0.260",
+    "@types/node": "^20.11.19",
+    "concurrently": "^8.2.2",
+    "esbuild": "^0.20.0",
+    "prettier": "^3.2.5",
+    "tsx": "^3.12.7"
+  },
+  "dependencies": {}
+}
