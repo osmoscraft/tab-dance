@@ -13,6 +13,8 @@ chrome.tabs.onCreated.addListener((tab) => {
 chrome.tabs.onUpdated.addListener(handleTabUpdated);
 
 async function handleTabUpdated(tabId: number, changeInfo: chrome.tabs.TabChangeInfo, tab: chrome.tabs.Tab) {
+  // TODO: rotate highlighted tabs to the front
+
   if (changeInfo.status !== "complete") return; // if user is dragging
   console.log(`[worker] tab updated [${tabId}]: ${changeInfo.status} ${tab.url}`);
   if (!tab.url) return; // TBD: do we need to remove tabs e.g. when current tab is replaced by blank url?
