@@ -2,6 +2,8 @@ import { setupOffscreenDocument } from "../lib/offscreen";
 import { backgroundPageParameters } from "../lib/parameters";
 import type { ExtensionMessageRequest } from "../typings/message";
 
+console.log("hello extension worker");
+
 chrome.action.onClicked.addListener(handleActionClick);
 chrome.runtime.onMessage.addListener(handleExtensionMessage);
 chrome.runtime.onInstalled.addListener(handleExtensionInstall);
