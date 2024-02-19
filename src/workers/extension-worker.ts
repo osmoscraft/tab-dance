@@ -1,3 +1,4 @@
+import { Observable, debounceTime } from "rxjs";
 import type { ExtensionMessageRequest } from "../typings/message";
 
 chrome.action.onClicked.addListener(handleActionClick);
@@ -9,6 +10,37 @@ chrome.tabs.onCreated.addListener((tab) => {
   // TBD
 });
 chrome.tabs.onUpdated.addListener(handleTabUpdated);
+// chrome.tabs.onHighlighted.addListener(handleTabHighlighted);
+
+const $tabHighlighted = new Observable<chrome.tabs.TabHighlightInfo>((subscriber) => {
+  // assumption 1: only a single subscriber
+  // assumption 2: will never unsubscribe
+  chrome.tabs.onHighlighted.addListener(() => subscriber.next());
+});
+
+$tabHighlighted.pipe(debounceTime(2000)).subscribe(handleTabHighlighted);
+
+async function handleTabHighlighted(_highlightInfo: chrome.tabs.TabHighlightInfo) {
+  const tab = await chrome.tabs.query({ currentWindow: true, highlighted: true }).then((tabs) => tabs[0]);
+  console.log({ tab });
+
+  // rotate highlighted tab group to the front of the window
+  const tabs = await chrome.tabs.query({ currentWindow: true });
+  const groups = [...groupToMapBy(tabs, (tab) => tab.groupId).entries()].map(([groupId, tabs]) => ({
+    groupId,
+    tabs: tabs ?? [],
+    highlighted: (tabs ?? []).some((tab) => tab.highlighted),
+  }));
+
+  const groupsBeforeHighlighted = groups.slice(
+    0,
+    groups.findIndex((group) => group.highlighted),
+  );
+
+  await Promise.allSettled(groupsBeforeHighlighted.map((group) => chrome.tabGroups.move(group.groupId, { index: -1 })));
+
+  // rotate highlighted tab to the front of the group
+}
 
 async function handleTabUpdated(tabId: number, changeInfo: chrome.tabs.TabChangeInfo, tab: chrome.tabs.Tab) {
   // TODO: rotate highlighted tabs to the front
@@ -55,7 +87,7 @@ async function handleTabUpdated(tabId: number, changeInfo: chrome.tabs.TabChange
   chrome.tabGroups.update(groupId, { title: getGroupTitle(identitySharingTabs) });
 
   /* move group to window front */
-  chrome.tabGroups.move(groupId, { index: 0 });
+  // chrome.tabGroups.move(groupId, { index: 0 });
 }
 
 async function handleCommand(command: string) {
@@ -78,7 +110,6 @@ async function handleCommand(command: string) {
     case "highlight-previous-group":
     case "highlight-next-group": {
       const tabs = await chrome.tabs.query({ currentWindow: true });
-
       const groups = [...groupToMapBy(tabs, (tab) => tab.groupId.toString()).entries()].map(([groupId, tabs]) => ({
         groupId,
         tabs: tabs ?? [],
@@ -244,14 +275,14 @@ async function handleBrowserStart() {
 }
 
 // TODO replace with native Map.prototype.groupBy in TypeScript 5.4
-function groupToMapBy<T>(array: T[], key: (item: T) => string) {
+function groupToMapBy<T, K extends string | number>(array: T[], key: (item: T) => K) {
   const map = array.reduce((map, item) => {
     const group = key(item);
     const list = map.get(group) ?? [];
     list.push(item);
     map.set(group, list);
     return map;
-  }, new Map<string, T[]>());
+  }, new Map<K, T[]>());
 
   return map;
 }
