@@ -8,6 +8,10 @@ chrome.runtime.onInstalled.addListener(handleExtensionInstall);
 chrome.runtime.onStartup.addListener(handleBrowserStart);
 (globalThis.self as any as ServiceWorkerGlobalScope).addEventListener("fetch", handleFetchEvent);
 
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  console.log(`[worker] tab updated [${tabId}]: ${changeInfo.status} [${tab.url}`)
+})
+
 function handleActionClick() {
   const readerPageUrl = new URL(chrome.runtime.getURL("app.html"));
   chrome.tabs.create({ url: readerPageUrl.toString() });
@@ -20,6 +24,8 @@ async function handleExtensionMessage(message: ExtensionMessageRequest) {
 
 async function handleExtensionInstall() {
   await setupOffscreenDocument(backgroundPageParameters);
+  const readerPageUrl = new URL(chrome.runtime.getURL("options.html"));
+  chrome.tabs.create({ url: readerPageUrl.toString() });
 }
 
 async function handleBrowserStart() {
