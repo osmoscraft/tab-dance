@@ -1,6 +1,6 @@
 {
-  "name": "Browser Extension Starter",
-  "description": "Template for browser extensions",
+  "name": "Auto Tab Groups",
+  "description": "Group tabs by host",
   "version": "0.0.1",
   "manifest_version": 3,
   "action": {
@@ -24,5 +24,14 @@
     "page": "options.html",
     "open_in_tab": true
   },
-  "permissions": ["offscreen", "tabs", "tabGroups", "favicon"]
+  "commands": {
+    "close-tabs-in-group": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+W",
+        "mac": "Command+Shift+W"
+      },
+      "description": "Close all tabs in the current group"
+    }
+  },
+  "permissions": ["offscreen", "tabs", "tabGroups", "favicon", "commands"]
 }

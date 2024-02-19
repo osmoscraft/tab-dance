@@ -2,18 +2,17 @@ import { setupOffscreenDocument } from "../lib/offscreen";
 import { backgroundPageParameters } from "../lib/parameters";
 import type { ExtensionMessageRequest } from "../typings/message";
 
-console.log("hello extension worker");
-
 chrome.action.onClicked.addListener(handleActionClick);
 chrome.runtime.onMessage.addListener(handleExtensionMessage);
 chrome.runtime.onInstalled.addListener(handleExtensionInstall);
 chrome.runtime.onStartup.addListener(handleBrowserStart);
-(globalThis.self as any as ServiceWorkerGlobalScope).addEventListener("fetch", handleFetchEvent);
-
+chrome.commands.onCommand.addListener(handleCommand);
 chrome.tabs.onCreated.addListener((tab) => {
   // TBD
 });
-chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
+chrome.tabs.onUpdated.addListener(handleTabUpdated);
+
+async function handleTabUpdated(tabId: number, changeInfo: chrome.tabs.TabChangeInfo, tab: chrome.tabs.Tab) {
   if (changeInfo.status !== "complete") return; // if user is dragging
   console.log(`[worker] tab updated [${tabId}]: ${changeInfo.status} ${tab.url}`);
   if (!tab.url) return; // TBD: do we need to remove tabs e.g. when current tab is replaced by blank url?
@@ -47,7 +46,27 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
   const groupId = await chrome.tabs.group({ tabIds: tabId, groupId: newGroupId });
 
   chrome.tabGroups.update(groupId, { title: getGroupTitle(identitySharingTabs) });
-});
+}
+
+async function handleCommand(command: string) {
+  switch (command) {
+    case "close-tabs-in-group": {
+      const groupIds = await chrome.tabs
+        .query({ currentWindow: true, highlighted: true })
+        .then((tabs) =>
+          tabs.map((tab) => tab.groupId).filter((groupId) => groupId !== chrome.tabGroups.TAB_GROUP_ID_NONE),
+        );
+      await Promise.allSettled(
+        groupIds.map((groupId) =>
+          chrome.tabs
+            .query({ currentWindow: true, groupId })
+            .then((tabs) => chrome.tabs.remove(tabs.map((tab) => tab.id!))),
+        ),
+      );
+      break;
+    }
+  }
+}
 
 // if the tab url is the same as existing tab, close current tab and navigate to existing tab
 async function findIdenticalTab(tab: chrome.tabs.Tab) {
@@ -178,9 +197,7 @@ function hasId(tab: chrome.tabs.Tab): tab is chrome.tabs.Tab & { id: number } {
 }
 
 function handleActionClick() {
-  const readerPageUrl = new URL(chrome.runtime.getURL("app.html"));
-  chrome.tabs.create({ url: readerPageUrl.toString() });
-  console.log("Action clicked");
+  chrome.runtime.openOptionsPage();
 }
 
 async function handleExtensionMessage(message: ExtensionMessageRequest) {
@@ -195,31 +212,4 @@ async function handleExtensionInstall() {
 
 async function handleBrowserStart() {
   await setupOffscreenDocument(backgroundPageParameters);
-}
-
-function handleFetchEvent(event: FetchEvent) {
-  const requestUrl = new URL(event.request.url);
-  if (requestUrl.pathname === "/app.html") {
-    const responseAsync = new Promise<Response>(async (resolve) => {
-      const html = `
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>App</title>
-    <link rel="icon" type="image/svg+xml" href="./images/icon.svg" />
-    <link rel="stylesheet" href="./app.css" />
-  </head>
-  <body>
-    <h1>Service Worker rendered page</h1>
-    <script type="module" src="./app.js"></script>
-  </body>
-</html>`;
-
-      resolve(new Response(html, { headers: { "Content-Type": "text/html" } }));
-    });
-
-    event.respondWith(responseAsync);
-  }
 }
