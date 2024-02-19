@@ -18,6 +18,14 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
   console.log(`[worker] tab updated [${tabId}]: ${changeInfo.status} ${tab.url}`);
   if (!tab.url) return; // TBD: do we need to remove tabs e.g. when current tab is replaced by blank url?
 
+  const identicalTab = await findIdenticalTab(tab);
+  if (identicalTab) {
+    console.log(`[worker] found identical tab [${identicalTab.id}]: ${identicalTab.url}`);
+    await chrome.tabs.remove(tabId);
+    await chrome.tabs.highlight({ tabs: identicalTab.index });
+    return;
+  }
+
   const pageKey = await getPageKey(tab.url);
   console.log(tab.url, pageKey);
 
@@ -40,6 +48,13 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
 
   chrome.tabGroups.update(groupId, { title: getGroupTitle(identitySharingTabs) });
 });
+
+// if the tab url is the same as existing tab, close current tab and navigate to existing tab
+async function findIdenticalTab(tab: chrome.tabs.Tab) {
+  const sameTabsByUrl = await chrome.tabs.query({ currentWindow: true, url: tab.url });
+
+  return sameTabsByUrl.find((t) => t.id !== tab.id);
+}
 
 // in the current window, find all tabs with the same host
 async function findTabsByGroupIdentity(key: string) {
