@@ -18,42 +18,48 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
   console.log(`[worker] tab updated [${tabId}]: ${changeInfo.status} ${tab.url}`);
   if (!tab.url) return; // TBD: do we need to remove tabs e.g. when current tab is replaced by blank url?
 
-  const { protocol, host } = await Promise.resolve()
-    .then(() => new URL(tab.url!))
-    .then((url) => ({ protocol: url.protocol ?? "", host: url.host ?? "" }))
-    .catch(() => ({ protocol: "", host: "" })); // empty host should not match any tabs
+  const pageKey = await getPageKey(tab.url);
+  console.log(tab.url, pageKey);
 
-  // host should be keyed with shortest domain name: *.example.com -> example.com
-
-  const [hostSharingTabs, groupSharingTabs] = await Promise.all([
-    findTabsByHost(protocol, host),
+  const [identitySharingTabs, groupSharingTabs] = await Promise.all([
+    findTabsByGroupIdentity(pageKey),
     getTabsByGroupId(tab.groupId),
   ]);
 
-  const uniqueHostsInGroup = new Set(groupSharingTabs.map((tab) => tab.url ?? "").map((url) => urlToHost(url)));
-  const invalidGroupIds = uniqueHostsInGroup.size > 1 ? [tab.groupId] : [];
-  invalidGroupIds.push(chrome.tabGroups.TAB_GROUP_ID_NONE);
+  const uniqueHostKeys = await Promise.all(groupSharingTabs.map((tab) => tab.url ?? "").map((url) => getPageKey(url)));
+  const uniqueHostsInGroup = new Set(uniqueHostKeys);
+  const invalidGroupIds = new Set<number>([chrome.tabGroups.TAB_GROUP_ID_NONE]);
+  if (uniqueHostsInGroup.size > 1) invalidGroupIds.add(tab.groupId);
 
-  const newGroupId = hostSharingTabs.findLast((tab) => !invalidGroupIds.includes(tab.groupId))?.groupId;
+  // if the same host is split across multiple groups, avoid adding to the current group
+  const uniqueGroups = new Set(identitySharingTabs.filter(isGroupedTab).map((tab) => tab.groupId));
+  if (uniqueGroups.size > 1) invalidGroupIds.add(tab.groupId);
+
+  const newGroupId = identitySharingTabs.findLast((tab) => !invalidGroupIds.has(tab.groupId))?.groupId;
   const groupId = await chrome.tabs.group({ tabIds: tabId, groupId: newGroupId });
 
-  chrome.tabGroups.update(groupId, { title: host });
+  chrome.tabGroups.update(groupId, { title: getGroupTitle(identitySharingTabs) });
 });
 
 // in the current window, find all tabs with the same host
-async function findTabsByHost(protocol: string, host: string) {
-  const tabIds = await chrome.tabs
+async function findTabsByGroupIdentity(key: string) {
+  const tabHandles = await chrome.tabs
     .query({
       currentWindow: true,
-      url: `${protocol}//${host}/*`,
     })
-    .then((tabs) => {
-      console.log("tabs", tabs);
-      const validTabs = tabs.filter(hasId);
-      return validTabs;
+    .then(async (tabs) => {
+      const validTabs = tabs.filter(hasId).filter((tab) => !!tab.url);
+      const validTabHandles = await Promise.all(
+        validTabs.map(async (tab) => ({
+          key: await getPageKey(tab.url!),
+          tab,
+        })),
+      );
+
+      return validTabHandles.filter((handle) => handle.key === key);
     });
 
-  return tabIds;
+  return tabHandles.map((tab) => tab.tab);
 }
 
 async function getTabsByGroupId(groupId: number) {
@@ -63,12 +69,93 @@ async function getTabsByGroupId(groupId: number) {
   return tabs.filter(hasId);
 }
 
-function urlToHost(url: string) {
+function getFaviconUrl(pageUrl: string) {
+  const url = new URL(chrome.runtime.getURL("/_favicon/"));
+  url.searchParams.set("pageUrl", pageUrl);
+  url.searchParams.set("size", "16");
+  return url.toString();
+}
+
+async function getFaviconHash(faviconUrl: string) {
+  return fetch(faviconUrl)
+    .then((response) => response.arrayBuffer())
+    .then((data) => crypto.subtle.digest("SHA-1", data))
+    .then((hash) => {
+      const hashArray = Array.from(new Uint8Array(hash));
+      const hashHex = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+      return hashHex;
+    });
+}
+
+const faviconHashMap = new Map<string, Promise<string>>();
+async function getPageKey(url: string) {
+  const cacheKey = getCacheKey(url);
+  let existing = faviconHashMap.get(cacheKey);
+  if (!existing) {
+    existing = getPageKeyNew(url);
+    faviconHashMap.set(cacheKey, existing);
+  }
+
+  return existing;
+}
+
+async function getPageKeyNew(url: string) {
+  return `${await getSiteURLIdentity(url)}:${await getSiteVisualIdentity(url)}`;
+}
+
+function getCacheKey(url: string) {
   try {
     return new URL(url).host;
   } catch {
-    return "";
+    return url;
   }
+}
+
+function getSiteURLIdentity(pageUrl: string) {
+  return new Promise<URL>((resolve) => resolve(new URL(pageUrl)))
+    .then((validURL) => validURL.host.split(".").slice(-2).join("."))
+    .catch(() => pageUrl);
+}
+
+async function getSiteVisualIdentity(pageUrl: string) {
+  return new Promise<URL>((resolve) => resolve(new URL(pageUrl)))
+    .then((validURL) => getFaviconUrl(validURL.href))
+    .then((faviconUrl) => getFaviconHash(faviconUrl))
+    .catch(() => new URL(pageUrl).host)
+    .catch(() => pageUrl);
+}
+
+function getGroupTitle(tabs: chrome.tabs.Tab[]) {
+  // return shortest common url segments right-to-left
+  // e.g. [www.github.com, github.com] -> github.com
+  // e.g. [www.github.com, www.github.com] -> www.github.com
+  // e.g. [www.github.com, docs.github.com] -> github.com
+
+  const urls = tabs.filter((tab) => !!tab.url);
+  if (urls.length === 0) return "New Group";
+
+  const hosts = urls.map((tab) => new URL(tab.url!).host);
+  const segments = hosts.map((host) => host.split(".").reverse());
+
+  const shortestLength = Math.min(...segments.map((segment) => segment.length));
+
+  const commonSegments = [];
+  for (let i = 0; i < shortestLength; i++) {
+    const segment = segments[0][i];
+    if (segments.every((s) => s[i] === segment)) {
+      commonSegments.push(segment);
+    } else {
+      break;
+    }
+  }
+
+  if (commonSegments.length === 0) return "New Group";
+
+  return commonSegments.reverse().join(".");
+}
+
+function isGroupedTab(tab: chrome.tabs.Tab) {
+  return tab.groupId !== chrome.tabGroups.TAB_GROUP_ID_NONE;
 }
 
 function hasId(tab: chrome.tabs.Tab): tab is chrome.tabs.Tab & { id: number } {
