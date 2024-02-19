@@ -5,11 +5,14 @@ chrome.runtime.onInstalled.addListener(handleExtensionInstall);
 chrome.runtime.onStartup.addListener(handleBrowserStart);
 chrome.commands.onCommand.addListener(handleCommand);
 chrome.tabs.onCreated.addListener((tab) => {
-  // TBD
+  console.log({ created: tab });
+  // immediate move the opener tab and its group to the front
 });
+
 chrome.tabs.onUpdated.addListener(handleTabUpdated);
 
-// TODO remove favicon based grouping to simplify permission
+// IDEA use openerId to build a tree of navigation stops, apply to active group only
+// IDEA when an active tab initiates a navigation, push the tab and group to the front, no rotation
 
 const $tabHighlighted = new Observable<chrome.tabs.TabHighlightInfo>((subscriber) => {
   // assumption 1: only a single subscriber
@@ -51,7 +54,7 @@ async function handleTabHighlighted(_highlightInfo: chrome.tabs.TabHighlightInfo
 }
 
 async function handleTabUpdated(tabId: number, changeInfo: chrome.tabs.TabChangeInfo, tab: chrome.tabs.Tab) {
-  // TODO: rotate highlighted tabs to the front
+  console.log({ updated: tab });
 
   if (changeInfo.status !== "complete") return; // if user is dragging
   console.log(`[worker] tab updated [${tabId}]: ${changeInfo.status} ${tab.url}`);
@@ -169,59 +172,13 @@ async function getTabsByGroupId(groupId: number) {
   return tabs.filter(hasId);
 }
 
-function getFaviconUrl(pageUrl: string) {
-  const url = new URL(chrome.runtime.getURL("/_favicon/"));
-  url.searchParams.set("pageUrl", pageUrl);
-  url.searchParams.set("size", "16");
-  return url.toString();
-}
-
-async function getFaviconHash(faviconUrl: string) {
-  return fetch(faviconUrl)
-    .then((response) => response.arrayBuffer())
-    .then((data) => crypto.subtle.digest("SHA-1", data))
-    .then((hash) => {
-      const hashArray = Array.from(new Uint8Array(hash));
-      const hashHex = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
-      return hashHex;
-    });
-}
-
-const faviconHashMap = new Map<string, Promise<string>>();
 async function getPageKey(url: string) {
-  const cacheKey = getCacheKey(url);
-  let existing = faviconHashMap.get(cacheKey);
-  if (!existing) {
-    existing = getPageKeyNew(url);
-    faviconHashMap.set(cacheKey, existing);
-  }
-
-  return existing;
-}
-
-async function getPageKeyNew(url: string) {
-  return `${await getSiteURLIdentity(url)}:${await getSiteVisualIdentity(url)}`;
-}
-
-function getCacheKey(url: string) {
-  try {
-    return new URL(url).host;
-  } catch {
-    return url;
-  }
+  return `${await getSiteURLIdentity(url)}`;
 }
 
 function getSiteURLIdentity(pageUrl: string) {
   return new Promise<URL>((resolve) => resolve(new URL(pageUrl)))
-    .then((validURL) => validURL.host.split(".").slice(-2).join("."))
-    .catch(() => pageUrl);
-}
-
-async function getSiteVisualIdentity(pageUrl: string) {
-  return new Promise<URL>((resolve) => resolve(new URL(pageUrl)))
-    .then((validURL) => getFaviconUrl(validURL.href))
-    .then((faviconUrl) => getFaviconHash(faviconUrl))
-    .catch(() => new URL(pageUrl).host)
+    .then((validURL) => validURL.host.split(".").slice(-3).join("."))
     .catch(() => pageUrl);
 }
 
@@ -273,7 +230,6 @@ async function handleExtensionInstall() {
 
 async function handleBrowserStart() {
   // TODO Start grouping on start
-  // Need to reindex all the group identities on app start
 }
 
 // TODO replace with native Map.prototype.groupBy in TypeScript 5.4
