@@ -8,7 +8,8 @@ chrome.tabs.onCreated.addListener((tab) => {
   // TBD
 });
 chrome.tabs.onUpdated.addListener(handleTabUpdated);
-// chrome.tabs.onHighlighted.addListener(handleTabHighlighted);
+
+// TODO remove favicon based grouping to simplify permission
 
 const $tabHighlighted = new Observable<chrome.tabs.TabHighlightInfo>((subscriber) => {
   // assumption 1: only a single subscriber
@@ -272,6 +273,7 @@ async function handleExtensionInstall() {
 
 async function handleBrowserStart() {
   // TODO Start grouping on start
+  // Need to reindex all the group identities on app start
 }
 
 // TODO replace with native Map.prototype.groupBy in TypeScript 5.4
