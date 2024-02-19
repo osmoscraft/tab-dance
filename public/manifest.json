@@ -45,5 +45,5 @@
       "description": "Highlight previous group"
     }
   },
-  "permissions": ["offscreen", "tabs", "tabGroups", "favicon", "commands"]
+  "permissions": ["tabs", "tabGroups", "favicon", "commands"]
 }

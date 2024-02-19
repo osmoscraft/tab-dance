@@ -1,5 +1,3 @@
-import { setupOffscreenDocument } from "../lib/offscreen";
-import { backgroundPageParameters } from "../lib/parameters";
 import type { ExtensionMessageRequest } from "../typings/message";
 
 chrome.action.onClicked.addListener(handleActionClick);
@@ -237,13 +235,12 @@ async function handleExtensionMessage(message: ExtensionMessageRequest) {
 }
 
 async function handleExtensionInstall() {
-  await setupOffscreenDocument(backgroundPageParameters);
   const readerPageUrl = new URL(chrome.runtime.getURL("options.html"));
   chrome.tabs.create({ url: readerPageUrl.toString() });
 }
 
 async function handleBrowserStart() {
-  await setupOffscreenDocument(backgroundPageParameters);
+  // TODO Start grouping on start
 }
 
 // TODO replace with native Map.prototype.groupBy in TypeScript 5.4
