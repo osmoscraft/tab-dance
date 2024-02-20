@@ -32,6 +32,12 @@
       },
       "description": "Close current group"
     },
+    "cycle-grouping-logic": {
+      "suggested_key": {
+        "default": "Ctrl+G"
+      },
+      "description": "Cycle among temporal, causal, and host based grouping"
+    },
     "highlight-next-group": {
       "suggested_key": {
         "default": "Ctrl+Down"
