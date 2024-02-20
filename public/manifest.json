@@ -27,14 +27,15 @@
   "commands": {
     "close-tabs-in-group": {
       "suggested_key": {
-        "default": "Ctrl+Shift+W",
-        "mac": "Command+Shift+W"
+        "default": "Ctrl+Q",
+        "mac": "Command+Q"
       },
       "description": "Close current group"
     },
     "cycle-grouping-logic": {
       "suggested_key": {
-        "default": "Ctrl+G"
+        "default": "Ctrl+E",
+        "mac": "Command+E"
       },
       "description": "Cycle among temporal, causal, and host based grouping"
     },
