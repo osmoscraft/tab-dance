@@ -38,22 +38,24 @@ const $tabLifecycle = $tabUpdatedPerTab.pipe(
   }),
 );
 
-// on created, move openner
+// on created, move openner, then move self
 $tabCreated.subscribe(async (tab) => {
   const openerId = tab.openerTabId;
-  if (!openerId) return;
+  if (openerId !== undefined) {
+    const openerTab = await chrome.tabs.get(openerId);
+    if (!openerTab.id) return;
 
-  const openerTab = await chrome.tabs.get(openerId);
-  if (!openerTab.id) return;
+    await chrome.tabs.move(openerTab.id, { index: 0 });
+  }
 
-  chrome.tabs.move(openerTab.id, { index: 0 });
+  if (tab.id === undefined) return;
+  await chrome.tabs.move(tab.id, { index: openerId === undefined ? 0 : 1 });
 });
 
-// on loading and complete, move tab itself
-$tabUpdated.subscribe(async (update) => {
+// on loading move tab itself
+$tabUpdated.pipe(filter((update) => update.changeInfo.status === "loading")).subscribe(async (update) => {
   if (!update.tabId) return;
-  if (!update.tab.active) return;
-  chrome.tabs.move(update.tabId, { index: 0 });
+  chrome.tabs.move(update.tabId, { index: update.tab.active ? 0 : 1 });
 });
 
 $tabLifecycle.subscribe((updates) => {
