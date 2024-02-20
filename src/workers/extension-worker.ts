@@ -50,6 +50,7 @@ $tabCreated.subscribe(async (tab) => {
 });
 
 $closeCurrentGroup.subscribe(async () => {
+  // TODO NPT cannot be remove
   const currentTab = await chrome.tabs.query({ currentWindow: true, highlighted: true }).then((tabs) => tabs.at(0));
   console.log({ willCloseTabGroup: currentTab });
   if (!currentTab?.id) return;
