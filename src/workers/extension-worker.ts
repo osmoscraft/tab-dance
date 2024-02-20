@@ -1,19 +1,40 @@
-import { Subject, filter, map } from "rxjs";
+import { Subject, filter } from "rxjs";
 
 const $tabUpdated = new Subject<{ tabId: number; changeInfo: chrome.tabs.TabChangeInfo; tab: chrome.tabs.Tab }>();
 const $tabCreated = new Subject<chrome.tabs.Tab>();
 const $command = new Subject<string>();
+const $tabGroupUpdated = new Subject<chrome.tabGroups.TabGroup>();
 
 // v2
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => $tabUpdated.next({ tabId, changeInfo, tab }));
 chrome.tabs.onCreated.addListener((tab) => $tabCreated.next(tab));
 chrome.commands.onCommand.addListener((command) => $command.next(command));
+chrome.tabGroups.onUpdated.addListener((tabGroup) => $tabGroupUpdated.next(tabGroup));
+chrome.tabGroups.onMoved.addListener((tabGroup) => $tabGroupUpdated.next(tabGroup));
 
 const $closeCurrentGroup = $command.pipe(filter((command) => command === "close-current-group"));
-const $cycleGroup = $command.pipe(
-  filter((command) => command.startsWith("cycle-")),
-  map((command) => (command === "cycle-next-group" ? 1 : -1)),
-);
+const $tidyUpTabs = $command.pipe(filter((command) => command === "tidy-up-tabs"));
+
+// Manually group the tabs
+$tidyUpTabs.subscribe(async () => {
+  const tabs = await chrome.tabs.query({ currentWindow: true });
+
+  const groups = await Promise.allSettled(
+    [...groupToMapBy(tabs, (tab) => tab.groupId)].map(async ([id], index) => ({
+      group: await chrome.tabGroups.get(id),
+      index,
+    })),
+  );
+
+  const updatedGroups = await Promise.allSettled(
+    groups
+      .map(parseSuccessPromise)
+      .filter(isNotNull)
+      .filter(({ group, index }) => group.title !== `${index + 1}`)
+      .map(({ group, index }) => chrome.tabGroups.update(group.id, { title: `${index + 1}` })),
+  );
+  console.log({ groups, updatedGroups });
+});
 
 // on created, group with any reachable tabs
 // TODO dedupe identical URLs
@@ -343,4 +364,13 @@ async function handleTabUpdated(tabId: number, changeInfo: chrome.tabs.TabChange
   const groupId = await chrome.tabs.group({ tabIds: [tabId], groupId: newGroupId });
 
   chrome.tabGroups.update(groupId, { title: getGroupTitle(identitySharingTabs) });
+}
+
+function parseSuccessPromise<T>(promise: PromiseSettledResult<T>): T | null {
+  if (promise.status === "fulfilled") return promise.value;
+  return null;
+}
+
+function isNotNull<T>(value: T | null): value is T {
+  return value !== null;
 }

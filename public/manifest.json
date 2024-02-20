@@ -39,12 +39,12 @@
       },
       "description": "Cycle next group"
     },
-    "cycle-previous-group": {
+    "tidy-up-tabs": {
       "suggested_key": {
-        "default": "Ctrl+Shift+Space",
-        "mac": "Command+Shift+Space"
+        "default": "Ctrl+G",
+        "mac": "Command+G"
       },
-      "description": "Cycle previous group"
+      "description": "Tidy up tabs"
     }
   },
   "permissions": ["tabs", "tabGroups", "commands"]
