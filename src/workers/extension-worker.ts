@@ -1,66 +1,126 @@
-import { Subject, filter, groupBy, map, merge, mergeMap, scan } from "rxjs";
+import { Subject, filter, map } from "rxjs";
 
 const $tabUpdated = new Subject<{ tabId: number; changeInfo: chrome.tabs.TabChangeInfo; tab: chrome.tabs.Tab }>();
 const $tabCreated = new Subject<chrome.tabs.Tab>();
+const $command = new Subject<string>();
 
 // v2
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => $tabUpdated.next({ tabId, changeInfo, tab }));
 chrome.tabs.onCreated.addListener((tab) => $tabCreated.next(tab));
+chrome.commands.onCommand.addListener((command) => $command.next(command));
+
+const $closeCurrentGroup = $command.pipe(filter((command) => command === "close-current-group"));
+const $cycleGroup = $command.pipe(
+  filter((command) => command.startsWith("cycle-")),
+  map((command) => (command === "cycle-next-group" ? 1 : -1)),
+);
+
+// on created, group with any reachable tabs
+// TODO dedupe identical URLs
+$tabCreated.subscribe(async (tab) => {
+  console.log({ newTabCreated: tab });
+
+  const isNewTab = await new Promise((resolve) => {
+    const url = new URL(tab.pendingUrl ?? tab.url ?? "");
+    resolve(url.hostname === "newtab");
+  }).catch(() => false);
+
+  let newTabId: number | null = null;
+
+  if (isNewTab) {
+    // empty url implies empty tab
+    newTabId = await chrome.tabs.group({ tabIds: [tab.id!] });
+  } else {
+    const opener = tab.openerTabId;
+    if (opener === undefined) {
+      newTabId = await chrome.tabs.group({ tabIds: [tab.id!] });
+    } else {
+      // group with opener
+      const openerTab = await chrome.tabs.get(opener);
+      if (openerTab.groupId === chrome.tabGroups.TAB_GROUP_ID_NONE) {
+        newTabId = await chrome.tabs.group({ tabIds: [openerTab.id!, tab.id!] });
+      } else {
+        newTabId = await chrome.tabs.group({ tabIds: [tab.id!], groupId: openerTab.groupId });
+      }
+    }
+  }
+
+  const existingGroups = await chrome.tabGroups.query({ windowId: tab.windowId });
+  chrome.tabGroups.update(newTabId, { title: `${existingGroups.length}` });
+});
+
+$closeCurrentGroup.subscribe(async () => {
+  const currentTab = await chrome.tabs.query({ currentWindow: true, highlighted: true }).then((tabs) => tabs.at(0));
+  console.log({ willCloseTabGroup: currentTab });
+  if (!currentTab?.id) return;
+
+  const currentTabGroupId = currentTab?.groupId;
+
+  if (currentTabGroupId === chrome.tabs.TAB_ID_NONE) {
+    chrome.tabs.remove(currentTab.id);
+    return;
+  } else {
+    const tabsInGroup = await chrome.tabs.query({ currentWindow: true, groupId: currentTabGroupId });
+    await Promise.allSettled(tabsInGroup.filter((tab) => tab.id).map((tab) => chrome.tabs.remove(tab.id!)));
+    return;
+  }
+});
+
+// const $tabUpsert = merge(
+//   $tabUpdated,
+//   $tabCreated.pipe(map((tab) => ({ tabId: tab.id!, changeInfo: { status: "created" }, tab }))),
+// );
+
+// const $tabUpdatedPerTab = $tabUpsert.pipe(
+//   groupBy((update) => update.tabId),
+//   map(($group) =>
+//     $group.pipe(filter((update) => ["created", "loading", "complete"].includes(update.changeInfo.status as string))),
+//   ),
+// );
+
+// const $tabLifecycle = $tabUpdatedPerTab.pipe(
+//   mergeMap((tab) => {
+//     return tab.pipe(
+//       scan(
+//         (acc, update) => {
+//           const baseAcc = acc.some((update: any) => update.status === "complete") ? [] : acc;
+//           return [...baseAcc, { tab: update.tab, status: update.changeInfo.status as string }];
+//         },
+//         [] as { tab: chrome.tabs.Tab; status: string }[],
+//       ),
+//     );
+//   }),
+// );
+
+// on created, move openner, then move self
+// $tabCreated.subscribe(async (tab) => {
+//   const openerId = tab.openerTabId;
+//   if (openerId !== undefined) {
+//     const openerTab = await chrome.tabs.get(openerId);
+//     if (!openerTab.id) return;
+
+//     await chrome.tabs.move(openerTab.id, { index: 0 });
+//   }
+
+//   if (tab.id === undefined) return;
+//   await chrome.tabs.move(tab.id, { index: openerId === undefined ? 0 : 1 });
+// });
+
+// // on loading move tab itself
+// $tabUpdated.pipe(filter((update) => update.changeInfo.status === "loading")).subscribe(async (update) => {
+//   if (!update.tabId) return;
+//   chrome.tabs.move(update.tabId, { index: update.tab.active ? 0 : 1 });
+// });
+
+// $tabLifecycle.subscribe((updates) => {
+//   console.log(updates);
+// });
 
 // v1
 chrome.action.onClicked.addListener(handleActionClick);
 chrome.runtime.onInstalled.addListener(handleExtensionInstall);
 chrome.runtime.onStartup.addListener(handleBrowserStart);
 chrome.commands.onCommand.addListener(handleCommand);
-
-const $tabUpsert = merge(
-  $tabUpdated,
-  $tabCreated.pipe(map((tab) => ({ tabId: tab.id!, changeInfo: { status: "created" }, tab }))),
-);
-const $tabUpdatedPerTab = $tabUpsert.pipe(
-  groupBy((update) => update.tabId),
-  map(($group) =>
-    $group.pipe(filter((update) => ["created", "loading", "complete"].includes(update.changeInfo.status as string))),
-  ),
-);
-
-const $tabLifecycle = $tabUpdatedPerTab.pipe(
-  mergeMap((tab) => {
-    return tab.pipe(
-      scan(
-        (acc, update) => {
-          const baseAcc = acc.some((update: any) => update.status === "complete") ? [] : acc;
-          return [...baseAcc, { tab: update.tab, status: update.changeInfo.status as string }];
-        },
-        [] as { tab: chrome.tabs.Tab; status: string }[],
-      ),
-    );
-  }),
-);
-
-// on created, move openner, then move self
-$tabCreated.subscribe(async (tab) => {
-  const openerId = tab.openerTabId;
-  if (openerId !== undefined) {
-    const openerTab = await chrome.tabs.get(openerId);
-    if (!openerTab.id) return;
-
-    await chrome.tabs.move(openerTab.id, { index: 0 });
-  }
-
-  if (tab.id === undefined) return;
-  await chrome.tabs.move(tab.id, { index: openerId === undefined ? 0 : 1 });
-});
-
-// on loading move tab itself
-$tabUpdated.pipe(filter((update) => update.changeInfo.status === "loading")).subscribe(async (update) => {
-  if (!update.tabId) return;
-  chrome.tabs.move(update.tabId, { index: update.tab.active ? 0 : 1 });
-});
-
-$tabLifecycle.subscribe((updates) => {
-  console.log(updates);
-});
 
 async function handleCommand(command: string) {
   switch (command) {

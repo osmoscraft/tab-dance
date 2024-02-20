@@ -25,31 +25,26 @@
     "open_in_tab": true
   },
   "commands": {
-    "close-tabs-in-group": {
+    "close-current-group": {
       "suggested_key": {
         "default": "Ctrl+Q",
         "mac": "Command+Q"
       },
       "description": "Close current group"
     },
-    "cycle-grouping-logic": {
+    "cycle-next-group": {
       "suggested_key": {
-        "default": "Ctrl+E",
-        "mac": "Command+E"
+        "default": "Ctrl+Space",
+        "mac": "Command+Space"
       },
-      "description": "Cycle among temporal, causal, and host based grouping"
+      "description": "Cycle next group"
     },
-    "highlight-next-group": {
+    "cycle-previous-group": {
       "suggested_key": {
-        "default": "Ctrl+Down"
+        "default": "Ctrl+Shift+Space",
+        "mac": "Command+Shift+Space"
       },
-      "description": "Highlight next group"
-    },
-    "highlight-previous-group": {
-      "suggested_key": {
-        "default": "Ctrl+Up"
-      },
-      "description": "Highlight previous group"
+      "description": "Cycle previous group"
     }
   },
   "permissions": ["tabs", "tabGroups", "commands"]
