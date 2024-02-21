@@ -12,6 +12,10 @@ import { Subject, filter, mergeMap, tap } from "rxjs";
 // TODO remove entry from dict when tab is detached or removed
 // TODO possible for dict to overflow?
 // QUIRK tabs.highlight triggers onHighlighted event but does not produce lastAccessed timestamp
+// ISSUE look back/ahead mutates history itself, may need to distinguish with gated onHighlighted observer
+// IDEA ^IO navigates, ^Space removes child tree
+// IDEA ^IO undo tab opening, not just hiding
+// IDEA Ctrl-O closes last viewed tab, Ctrl-Shift-O navigate out without closing, Ctrl-I undo closing
 
 const $tabHighlighted = new Subject<chrome.tabs.TabHighlightInfo>();
 const $tabUpdated = new Subject<{ tabId: number; changeInfo: chrome.tabs.TabChangeInfo; tab: chrome.tabs.Tab }>();
