@@ -8,6 +8,9 @@ import { Subject, filter, mergeMap, tap } from "rxjs";
 // TODO no timestamp for new tab page
 // TODO deduplicate identical URLs?
 // TODO tab.lastAccessed typing available in chrom 121+
+// TOOD revive closed tabs from history/session api
+// TODO remove entry from dict when tab is detached or removed
+// TODO possible for dict to overflow?
 // QUIRK tabs.highlight triggers onHighlighted event but does not produce lastAccessed timestamp
 
 const $tabHighlighted = new Subject<chrome.tabs.TabHighlightInfo>();
@@ -119,12 +122,12 @@ $openNext
       chrome.tabs.highlight({ tabs: currentHighlightedIndex + 1 });
 
       // TODO: should we auto grow previous group?
-      // const prevTabs = allTabs.slice(0, currentHighlightedIndex + 1);
-      // if (prevTabs.length) {
-      //   const prevGroupId = prevTabs.map((tab) => tab.groupId).find((id) => id !== chrome.tabGroups.TAB_GROUP_ID_NONE);
-      //   const newGroup = await chrome.tabs.group({ tabIds: prevTabs.map((tab) => tab.id!), groupId: prevGroupId });
-      //   await chrome.tabGroups.update(newGroup, { title: `${prevTabs.length}`, collapsed: true });
-      // }
+      const prevTabs = allTabs.slice(0, currentHighlightedIndex + 1);
+      if (prevTabs.length) {
+        const prevGroupId = prevTabs.map((tab) => tab.groupId).find((id) => id !== chrome.tabGroups.TAB_GROUP_ID_NONE);
+        const newGroup = await chrome.tabs.group({ tabIds: prevTabs.map((tab) => tab.id!), groupId: prevGroupId });
+        await chrome.tabGroups.update(newGroup, { title: `${prevTabs.length}`, collapsed: true });
+      }
     }),
   )
   .subscribe();
