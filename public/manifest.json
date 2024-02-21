@@ -1,6 +1,6 @@
 {
-  "name": "Auto Tab Groups",
-  "description": "Group tabs by host",
+  "name": "Tab Streak",
+  "description": "Switch and close tabs a single key press",
   "version": "0.0.1",
   "manifest_version": 3,
   "action": {
@@ -25,13 +25,13 @@
     "open_in_tab": true
   },
   "commands": {
-    "next-jump": {
-      "description": "Next jump",
+    "next-tab": {
+      "description": "Next tab",
       "suggested_key": {
         "default": "Ctrl+Space",
         "mac": "Command+Space"
       }
     }
   },
-  "permissions": ["tabs", "tabGroups", "commands", "storage"]
+  "permissions": ["tabs", "commands"]
 }

@@ -1,10 +1,9 @@
 chrome.commands.onCommand.addListener(handleCommand);
 chrome.action.onClicked.addListener(handleActionClick);
 chrome.runtime.onInstalled.addListener(handleExtensionInstall);
-chrome.runtime.onStartup.addListener(handleBrowserStart);
 
 async function handleCommand(command: string) {
-  if (command !== "next-jump") return;
+  if (command !== "next-tab") return;
 
   const allTabs = await chrome.tabs.query({ currentWindow: true });
   const highlightedTab = allTabs.find((tab) => tab.highlighted);
@@ -50,10 +49,6 @@ function handleActionClick() {
 async function handleExtensionInstall() {
   const readerPageUrl = new URL(chrome.runtime.getURL("options.html"));
   chrome.tabs.create({ url: readerPageUrl.toString() });
-}
-
-async function handleBrowserStart() {
-  // TODO Start grouping on start
 }
 
 async function lift<T>(factory: () => T) {
