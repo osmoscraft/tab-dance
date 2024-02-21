@@ -1,6 +1,7 @@
 import { Subject, filter, mergeMap, tap } from "rxjs";
 
 // ISSUE after tab moved, the lastAccessed timestamp was not updated
+// TODO ctrl shift space to undo
 // TODO on init, set timestamp to be the index
 // TODO handle dragged in tab
 // TODO handle PWA, ignore window by type?
