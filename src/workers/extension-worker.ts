@@ -14,13 +14,20 @@ chrome.tabGroups.onMoved.addListener((tabGroup) => $tabGroupUpdated.next(tabGrou
 
 const $closeCurrentGroup = $command.pipe(filter((command) => command === "close-current-group"));
 const $tidyUpTabs = $command.pipe(filter((command) => command === "tidy-up-tabs"));
+const $cycleNextGroup = $command.pipe(filter((command) => command === "cycle-next-group"));
 
 // Manually group the tabs
 $tidyUpTabs.subscribe(async () => {
-  const tabs = await chrome.tabs.query({ currentWindow: true });
+  // assign ungrouped tasks to groups
+  const unassignedTabs = await chrome.tabs
+    .query({ currentWindow: true, groupId: chrome.tabs.TAB_ID_NONE })
+    .then((tabs) => tabs.filter((tab) => tab.groupId === chrome.tabGroups.TAB_GROUP_ID_NONE));
+  await Promise.allSettled(unassignedTabs.map((tab) => assignTab(tab)));
 
+  // update group names
+  const remainingTabs = await chrome.tabs.query({ currentWindow: true });
   const groups = await Promise.allSettled(
-    [...groupToMapBy(tabs, (tab) => tab.groupId)].map(async ([id], index) => ({
+    [...groupToMapBy(remainingTabs, (tab) => tab.groupId)].map(async ([id], index) => ({
       group: await chrome.tabGroups.get(id),
       index,
     })),
@@ -36,10 +43,32 @@ $tidyUpTabs.subscribe(async () => {
   console.log({ groups, updatedGroups });
 });
 
+$cycleNextGroup.subscribe(async () => {});
+
 // on created, group with any reachable tabs
 // TODO dedupe identical URLs
-$tabCreated.subscribe(async (tab) => {
-  console.log({ newTabCreated: tab });
+$tabCreated.subscribe(async (tab) => assignTab(tab));
+
+$closeCurrentGroup.subscribe(async () => {
+  // TODO NPT cannot be remove
+  const currentTab = await chrome.tabs.query({ currentWindow: true, highlighted: true }).then((tabs) => tabs.at(0));
+  console.log({ willCloseTabGroup: currentTab });
+  if (!currentTab?.id) return;
+
+  const currentTabGroupId = currentTab?.groupId;
+
+  if (currentTabGroupId === chrome.tabs.TAB_ID_NONE) {
+    chrome.tabs.remove(currentTab.id);
+    return;
+  } else {
+    const tabsInGroup = await chrome.tabs.query({ currentWindow: true, groupId: currentTabGroupId });
+    await Promise.allSettled(tabsInGroup.filter((tab) => tab.id).map((tab) => chrome.tabs.remove(tab.id!)));
+    return;
+  }
+});
+
+async function assignTab(tab: chrome.tabs.Tab) {
+  console.log({ willAssignTab: tab });
 
   const isNewTab = await new Promise((resolve) => {
     const url = new URL(tab.pendingUrl ?? tab.url ?? "");
@@ -67,26 +96,8 @@ $tabCreated.subscribe(async (tab) => {
   }
 
   const existingGroups = await chrome.tabGroups.query({ windowId: tab.windowId });
-  chrome.tabGroups.update(newTabId, { title: `${existingGroups.length}` });
-});
-
-$closeCurrentGroup.subscribe(async () => {
-  // TODO NPT cannot be remove
-  const currentTab = await chrome.tabs.query({ currentWindow: true, highlighted: true }).then((tabs) => tabs.at(0));
-  console.log({ willCloseTabGroup: currentTab });
-  if (!currentTab?.id) return;
-
-  const currentTabGroupId = currentTab?.groupId;
-
-  if (currentTabGroupId === chrome.tabs.TAB_ID_NONE) {
-    chrome.tabs.remove(currentTab.id);
-    return;
-  } else {
-    const tabsInGroup = await chrome.tabs.query({ currentWindow: true, groupId: currentTabGroupId });
-    await Promise.allSettled(tabsInGroup.filter((tab) => tab.id).map((tab) => chrome.tabs.remove(tab.id!)));
-    return;
-  }
-});
+  await chrome.tabGroups.update(newTabId, { title: `${existingGroups.length}` });
+}
 
 // const $tabUpsert = merge(
 //   $tabUpdated,
