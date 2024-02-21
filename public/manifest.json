@@ -39,6 +39,13 @@
       },
       "description": "Cycle next group"
     },
+    "previous-tab": {
+      "suggested_key": {
+        "default": "Ctrl+O",
+        "mac": "Command+O"
+      },
+      "description": "Previous tab"
+    },
     "tidy-up-tabs": {
       "suggested_key": {
         "default": "Ctrl+G",

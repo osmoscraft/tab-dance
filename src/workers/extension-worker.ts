@@ -1,4 +1,4 @@
-import { Subject, filter } from "rxjs";
+import { Subject, filter, map } from "rxjs";
 
 const $tabUpdated = new Subject<{ tabId: number; changeInfo: chrome.tabs.TabChangeInfo; tab: chrome.tabs.Tab }>();
 const $tabCreated = new Subject<chrome.tabs.Tab>();
@@ -15,39 +15,66 @@ chrome.tabGroups.onMoved.addListener((tabGroup) => $tabGroupUpdated.next(tabGrou
 const $closeCurrentGroup = $command.pipe(filter((command) => command === "close-current-group"));
 const $tidyUpTabs = $command.pipe(filter((command) => command === "tidy-up-tabs"));
 const $cycleNextGroup = $command.pipe(filter((command) => command === "cycle-next-group"));
+const $previousTab = $command.pipe(filter((command) => command === "previous-tab"));
 
 // Manually group the tabs
 $tidyUpTabs.subscribe(async () => {
-  // assign ungrouped tasks to groups
+  // assign ungrouped tabs to groups
   const unassignedTabs = await chrome.tabs
     .query({ currentWindow: true, groupId: chrome.tabs.TAB_ID_NONE })
     .then((tabs) => tabs.filter((tab) => tab.groupId === chrome.tabGroups.TAB_GROUP_ID_NONE));
   await Promise.allSettled(unassignedTabs.map((tab) => assignTab(tab)));
-
-  // update group names
-  const remainingTabs = await chrome.tabs.query({ currentWindow: true });
-  const groups = await Promise.allSettled(
-    [...groupToMapBy(remainingTabs, (tab) => tab.groupId)].map(async ([id], index) => ({
-      group: await chrome.tabGroups.get(id),
-      index,
-    })),
-  );
-
-  const updatedGroups = await Promise.allSettled(
-    groups
-      .map(parseSuccessPromise)
-      .filter(isNotNull)
-      .filter(({ group, index }) => group.title !== `${index + 1}`)
-      .map(({ group, index }) => chrome.tabGroups.update(group.id, { title: `${index + 1}` })),
-  );
-  console.log({ groups, updatedGroups });
 });
 
-$cycleNextGroup.subscribe(async () => {});
+$previousTab.subscribe(async () => {
+  const currentTab = await chrome.tabs.query({ currentWindow: true, highlighted: true }).then((tabs) => tabs.at(0));
+  console.log({ findPreviousFor: currentTab });
+  if (!currentTab?.openerTabId) return;
 
-// on created, group with any reachable tabs
+  const openerTab = await chrome.tabs.get(currentTab.openerTabId);
+  await chrome.tabs.highlight({ tabs: openerTab.index });
+});
+
+// TODO remember the active tab within a group
+// TODO cycle in the optimal direction
+$cycleNextGroup.subscribe(async () => {
+  // while the first tab or group is not highlights, cycle until it is so
+
+  const allTabs = await chrome.tabs.query({ currentWindow: true });
+  const preGroupTabs = allTabs.map((t, index) => ({
+    tab: t,
+    vGroupId: t.groupId === chrome.tabGroups.TAB_GROUP_ID_NONE ? `_${index}` : t.groupId,
+  }));
+  const groupedTabs = [...orderedGroupBy(preGroupTabs, (tab) => tab.vGroupId)].map(([groupId, tabs]) => ({
+    groupId: typeof groupId === "string" ? chrome.tabGroups.TAB_GROUP_ID_NONE : groupId,
+    tabs: tabs.map((tab) => tab.tab),
+    highlighted: (tabs ?? []).some((tab) => tab.tab.highlighted),
+  }));
+
+  const shiftOffset = groupedTabs.findIndex((group) => group.highlighted) + 1;
+
+  console.log({ groupedTabs, shiftOffset });
+
+  for (let i = 0; i < shiftOffset; i++) {
+    // find the first movable thing: group, if not, tab.
+    const [firstTab] = await chrome.tabs.query({ currentWindow: true, index: 0 });
+    if (!firstTab?.id) continue;
+
+    if (firstTab.groupId === chrome.tabGroups.TAB_GROUP_ID_NONE) {
+      await chrome.tabs.move(firstTab.id, { index: -1 });
+    } else {
+      await chrome.tabGroups.move(firstTab.groupId, { index: -1 });
+    }
+  }
+
+  // highlight the first tab
+  const [newFirstTab] = await chrome.tabs.query({ currentWindow: true, index: 0 });
+  await chrome.tabs.highlight({ tabs: newFirstTab.index });
+});
+
+// on created, assign group
 // TODO dedupe identical URLs
-$tabCreated.subscribe(async (tab) => assignTab(tab));
+$tabCreated.pipe(map(assignTab)).subscribe();
 
 $closeCurrentGroup.subscribe(async () => {
   // TODO NPT cannot be remove
@@ -94,9 +121,6 @@ async function assignTab(tab: chrome.tabs.Tab) {
       }
     }
   }
-
-  const existingGroups = await chrome.tabGroups.query({ windowId: tab.windowId });
-  await chrome.tabGroups.update(newTabId, { title: `${existingGroups.length}` });
 }
 
 // const $tabUpsert = merge(
@@ -175,7 +199,7 @@ async function handleCommand(command: string) {
     case "highlight-previous-group":
     case "highlight-next-group": {
       const tabs = await chrome.tabs.query({ currentWindow: true });
-      const groups = [...groupToMapBy(tabs, (tab) => tab.groupId.toString()).entries()].map(([groupId, tabs]) => ({
+      const groups = [...orderedGroupBy(tabs, (tab) => tab.groupId.toString()).entries()].map(([groupId, tabs]) => ({
         groupId,
         tabs: tabs ?? [],
         highlighted: (tabs ?? []).some((tab) => tab.highlighted),
@@ -290,7 +314,7 @@ async function handleBrowserStart() {
 }
 
 // TODO replace with native Map.prototype.groupBy in TypeScript 5.4
-function groupToMapBy<T, K extends string | number>(array: T[], key: (item: T) => K) {
+function orderedGroupBy<T, K extends string | number>(array: T[], key: (item: T) => K) {
   const map = array.reduce((map, item) => {
     const group = key(item);
     const list = map.get(group) ?? [];
@@ -308,7 +332,7 @@ async function handleTabHighlighted(_highlightInfo: chrome.tabs.TabHighlightInfo
 
   // rotate highlighted tab group to the front of the window
   const tabs = await chrome.tabs.query({ currentWindow: true });
-  const groups = [...groupToMapBy(tabs, (tab) => tab.groupId).entries()].map(([groupId, tabs]) => ({
+  const groups = [...orderedGroupBy(tabs, (tab) => tab.groupId).entries()].map(([groupId, tabs]) => ({
     groupId,
     tabs: tabs ?? [],
     highlighted: (tabs ?? []).some((tab) => tab.highlighted),
