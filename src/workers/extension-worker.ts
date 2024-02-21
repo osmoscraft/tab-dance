@@ -38,7 +38,6 @@ chrome.runtime.onStartup.addListener(handleBrowserStart);
 const $openPrevious = $command.pipe(filter((command) => command === "open-previous"));
 const $openNext = $command.pipe(filter((command) => command === "open-next"));
 const $printDebug = $command.pipe(filter((command) => command === "print-debug"));
-const $organizeTabs = $command.pipe(filter((command) => command === "organize-tabs"));
 const $nextJump = $command.pipe(filter((command) => command === "next-jump"));
 
 $nextJump
@@ -118,47 +117,6 @@ $printDebug
   )
   .subscribe();
 
-$organizeTabs
-  .pipe(
-    mergeMap(async () => {
-      // ensure chronological sorted
-      const allTabs = await chrome.tabs.query({ currentWindow: true });
-
-      // if there are groups, break them
-      await chrome.tabs.ungroup(allTabs.map((tab) => tab.id!));
-
-      const accessTimeDict = (await chrome.storage.session.get(allTabs.map((tab) => tab.id!.toString()))) as Record<
-        string,
-        number
-      >;
-      console.log({ accessTimeDict });
-
-      const currentTab = await chrome.tabs
-        .query({ currentWindow: true, highlighted: true })
-        .then((tabs) => tabs.at(0)?.id);
-
-      const sortedTabs = allTabs
-        .filter(hasId)
-        .map(ensureLastAccessTime.bind(null, accessTimeDict)) // Leave new unvisited tabs untouched
-        .toSorted((a, b) => a.lastAccessed - b.lastAccessed)
-        .map((tab, index) => ({ ...tab, targetIndex: index }))
-        .filter((tab) => tab.id !== currentTab); // Avoid moving current tab as it will trigger unwanted onHighlighted event
-
-      await Promise.all(sortedTabs.map((tab) => chrome.tabs.move(tab.id!, { index: tab.targetIndex })));
-
-      // group all tabs before (current) tab
-      const allTabsSorted = await chrome.tabs.query({ currentWindow: true });
-      const allTabsBeforeCurrent = allTabsSorted.slice(
-        0,
-        allTabsSorted.findIndex((tab) => tab.highlighted),
-      );
-
-      const newGroup = await chrome.tabs.group({ tabIds: allTabsBeforeCurrent.map((tab) => tab.id!) });
-      await chrome.tabGroups.update(newGroup, { title: `${allTabsBeforeCurrent.length}`, collapsed: true });
-    }),
-  )
-  .subscribe();
-
 $openNext
   .pipe(
     mergeMap(async () => {
@@ -169,14 +127,6 @@ $openNext
       if (currentHighlightedIndex === allTabs.length - 1) return;
 
       chrome.tabs.highlight({ tabs: currentHighlightedIndex + 1 });
-
-      // TODO: should we auto grow previous group?
-      // const prevTabs = allTabs.slice(0, currentHighlightedIndex + 1);
-      // if (prevTabs.length) {
-      //   const prevGroupId = prevTabs.map((tab) => tab.groupId).find((id) => id !== chrome.tabGroups.TAB_GROUP_ID_NONE);
-      //   const newGroup = await chrome.tabs.group({ tabIds: prevTabs.map((tab) => tab.id!), groupId: prevGroupId });
-      //   await chrome.tabGroups.update(newGroup, { title: `${prevTabs.length}`, collapsed: true });
-      // }
     }),
   )
   .subscribe();
