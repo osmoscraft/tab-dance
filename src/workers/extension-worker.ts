@@ -2,6 +2,10 @@ chrome.commands.onCommand.addListener(handleCommand);
 chrome.action.onClicked.addListener(handleActionClick);
 chrome.runtime.onInstalled.addListener(handleExtensionInstall);
 
+// TODO audio feedback for tab closure
+// TODO audio feedback for dive-in
+// TODO options page to allow audio feedback
+
 async function handleCommand(command: string) {
   if (command !== "next-tab") return;
 

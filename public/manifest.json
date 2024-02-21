@@ -1,6 +1,6 @@
 {
   "name": "Tab Streak",
-  "description": "Switch and close tabs a single key press",
+  "description": "Speed up browsing and reduce tabs, with a single keypress",
   "version": "0.0.1",
   "manifest_version": 3,
   "action": {
