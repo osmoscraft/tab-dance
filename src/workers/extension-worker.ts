@@ -4,6 +4,8 @@ chrome.runtime.onInstalled.addListener(handleExtensionInstall);
 chrome.runtime.onStartup.addListener(handleBrowserStart);
 
 async function handleCommand(command: string) {
+  if (command !== "next-jump") return;
+
   const allTabs = await chrome.tabs.query({ currentWindow: true });
   const highlightedTab = allTabs.find((tab) => tab.highlighted);
   const nextChild = allTabs.find((tab) => tab.openerTabId === (highlightedTab?.id ?? null));
