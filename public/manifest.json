@@ -25,34 +25,30 @@
     "open_in_tab": true
   },
   "commands": {
-    "close-current-group": {
-      "suggested_key": {
-        "default": "Ctrl+Q",
-        "mac": "Command+Q"
-      },
-      "description": "Close current group"
+    "print-debug": {
+      "description": "Print debug"
     },
-    "cycle-next-group": {
-      "suggested_key": {
-        "default": "Ctrl+Space",
-        "mac": "Command+Space"
-      },
-      "description": "Cycle next group"
-    },
-    "previous-tab": {
+    "open-previous": {
+      "description": "Open previous",
       "suggested_key": {
         "default": "Ctrl+O",
         "mac": "Command+O"
-      },
-      "description": "Previous tab"
+      }
     },
-    "tidy-up-tabs": {
+    "open-next": {
+      "description": "Open next",
       "suggested_key": {
-        "default": "Ctrl+G",
-        "mac": "Command+G"
-      },
-      "description": "Tidy up tabs"
+        "default": "Ctrl+I",
+        "mac": "Command+I"
+      }
+    },
+    "organize-tabs": {
+      "description": "Organize tabs",
+      "suggested_key": {
+        "default": "Ctrl+Space",
+        "mac": "Command+Space"
+      }
     }
   },
-  "permissions": ["tabs", "tabGroups", "commands"]
+  "permissions": ["tabs", "tabGroups", "commands", "storage"]
 }

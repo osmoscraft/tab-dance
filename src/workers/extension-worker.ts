@@ -1,127 +1,253 @@
-import { Subject, filter, map } from "rxjs";
+import { Subject, filter, mergeMap, tap } from "rxjs";
 
+const $tabHighlighted = new Subject<chrome.tabs.TabHighlightInfo>();
 const $tabUpdated = new Subject<{ tabId: number; changeInfo: chrome.tabs.TabChangeInfo; tab: chrome.tabs.Tab }>();
 const $tabCreated = new Subject<chrome.tabs.Tab>();
 const $command = new Subject<string>();
 const $tabGroupUpdated = new Subject<chrome.tabGroups.TabGroup>();
 
-// v2
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => $tabUpdated.next({ tabId, changeInfo, tab }));
 chrome.tabs.onCreated.addListener((tab) => $tabCreated.next(tab));
 chrome.commands.onCommand.addListener((command) => $command.next(command));
 chrome.tabGroups.onUpdated.addListener((tabGroup) => $tabGroupUpdated.next(tabGroup));
 chrome.tabGroups.onMoved.addListener((tabGroup) => $tabGroupUpdated.next(tabGroup));
+chrome.tabs.onHighlighted.addListener((highlightInfo) => $tabHighlighted.next(highlightInfo));
 
-const $closeCurrentGroup = $command.pipe(filter((command) => command === "close-current-group"));
-const $tidyUpTabs = $command.pipe(filter((command) => command === "tidy-up-tabs"));
-const $cycleNextGroup = $command.pipe(filter((command) => command === "cycle-next-group"));
-const $previousTab = $command.pipe(filter((command) => command === "previous-tab"));
+const $openPrevious = $command.pipe(filter((command) => command === "open-previous"));
+const $openNext = $command.pipe(filter((command) => command === "open-next"));
+const $printDebug = $command.pipe(filter((command) => command === "print-debug"));
+const $organizeTabs = $command.pipe(filter((command) => command === "organize-tabs"));
+
+$tabHighlighted
+  .pipe(
+    tap(async (highlightInfo) => {
+      console.log(`highlighed`, highlightInfo.tabIds);
+    }),
+    mergeMap(async (info) => {
+      const highlightEntries = await Promise.all(info.tabIds.map((tabId) => chrome.tabs.get(tabId)));
+      console.log(`highlighed entries`, highlightEntries);
+      const highlightDict = Object.fromEntries(highlightEntries.map((tab) => [tab.id!.toString(), Date.now()]));
+      console.log(highlightDict);
+      chrome.storage.session.set(highlightDict);
+    }),
+  )
+  .subscribe();
+
+$printDebug
+  .pipe(
+    tap(async () => {
+      const allTabs = await chrome.tabs.query({ currentWindow: true });
+      const accessTimeDict = (await chrome.storage.session.get(allTabs.map((tab) => tab.id!.toString()))) as Record<
+        string,
+        number
+      >;
+
+      const allTabsWithTime = allTabs
+        .map((tab) => ({ ...tab, lastAccessed: accessTimeDict[tab.id!.toString()] ?? Infinity }))
+        .sort((a, b) => (a as any).lastAccessed - (b as any).lastAccessed)
+        .map((t) => `${t.lastAccessed} ${t.index} ${t.title}`)
+        .join("\n");
+
+      console.log(allTabsWithTime);
+    }),
+  )
+  .subscribe();
+
+// ISSUE after tab moved, the lastAccessed timestamp was not updated
+// TODO on init, set timestamp to be the index
+// TODO handle dragged in tab
+// TODO handle PWA, ignore window by type?
+// TODO timestamp lost when re-opening browser session
+// TODO no timestamp for new tab page
+// TODO deduplicate identical URLs?
+// TODO tab.lastAccessed typing available in chrom 121+
+// QUIRK tabs.highlight triggers onHighlighted event but does not produce lastAccessed timestamp
+
+$organizeTabs
+  .pipe(
+    mergeMap(async () => {
+      // ensure chronological sorted
+      const allTabs = await chrome.tabs.query({ currentWindow: true });
+
+      const accessTimeDict = (await chrome.storage.session.get(allTabs.map((tab) => tab.id!.toString()))) as Record<
+        string,
+        number
+      >;
+      console.log({ accessTimeDict });
+
+      const currentTab = await chrome.tabs
+        .query({ currentWindow: true, highlighted: true })
+        .then((tabs) => tabs.at(0)?.id);
+
+      const sortedTabs = allTabs
+        .filter(hasId)
+        .map(ensureLastAccessTime.bind(null, accessTimeDict))
+        .toSorted((a, b) => a.lastAccessed - b.lastAccessed)
+        .map((tab, index) => ({ ...tab, targetIndex: index }));
+
+      // Avoid moving current tab as it will trigger onHighlighted event
+      // History manipulation must not affect history
+      // TODO do not make unnecessary move
+      for (const sortedTab of sortedTabs) {
+        if (sortedTab.id === currentTab) continue;
+        await chrome.tabs.move(sortedTab.id!, { index: sortedTab.targetIndex });
+      }
+    }),
+  )
+  .subscribe();
+
+$openNext
+  .pipe(
+    mergeMap(async () => {
+      const allTabs = await chrome.tabs.query({ currentWindow: true });
+      const currentHighlightedIndex = await chrome.tabs
+        .query({ currentWindow: true, highlighted: true })
+        .then((tabs) => tabs.at(0)?.index ?? allTabs.length - 1);
+      if (currentHighlightedIndex === allTabs.length - 1) return;
+
+      chrome.tabs.highlight({ tabs: currentHighlightedIndex + 1 });
+    }),
+  )
+  .subscribe();
+
+$openPrevious
+  .pipe(
+    mergeMap(async () => {
+      const currentHighlightedIndex = await chrome.tabs
+        .query({ currentWindow: true, highlighted: true })
+        .then((tabs) => tabs.at(0)?.index ?? 0);
+      if (!currentHighlightedIndex) return;
+
+      chrome.tabs.highlight({ tabs: currentHighlightedIndex - 1 });
+    }),
+  )
+  .subscribe();
+
+function ensureLastAccessTime(
+  dict: Record<string, number>,
+  tab: chrome.tabs.Tab,
+): chrome.tabs.Tab & { lastAccessed: number } {
+  return { ...tab, lastAccessed: dict[tab.id!.toString()] ?? Infinity };
+}
 
 // Manually group the tabs
-$tidyUpTabs.subscribe(async () => {
-  // assign ungrouped tabs to groups
-  const unassignedTabs = await chrome.tabs
-    .query({ currentWindow: true, groupId: chrome.tabs.TAB_ID_NONE })
-    .then((tabs) => tabs.filter((tab) => tab.groupId === chrome.tabGroups.TAB_GROUP_ID_NONE));
-  await Promise.allSettled(unassignedTabs.map((tab) => assignTab(tab)));
-});
+// $tidyUpTabs.subscribe(async () => {
+//   // assign ungrouped tabs to groups
+//   const unassignedTabs = await chrome.tabs
+//     .query({ currentWindow: true, groupId: chrome.tabs.TAB_ID_NONE })
+//     .then((tabs) => tabs.filter((tab) => tab.groupId === chrome.tabGroups.TAB_GROUP_ID_NONE));
+//   await Promise.allSettled(unassignedTabs.map((tab) => assignTab(tab)));
+// });
 
-$previousTab.subscribe(async () => {
-  const currentTab = await chrome.tabs.query({ currentWindow: true, highlighted: true }).then((tabs) => tabs.at(0));
-  console.log({ findPreviousFor: currentTab });
-  if (!currentTab?.openerTabId) return;
+// $undoTabView.subscribe(async () => {
+//   const tabId = tabHistory.ids.at(tabHistory.headIndex - 1);
+//   if (!tabId) return;
 
-  const openerTab = await chrome.tabs.get(currentTab.openerTabId);
-  await chrome.tabs.highlight({ tabs: openerTab.index });
-});
+//   const tab = await chrome.tabs.get(tabId).catch(() => null);
+//   if (!tab) return;
+//   await chrome.windows.update(tab.windowId, { focused: true });
+//   await chrome.tabs.highlight({ tabs: tab.index });
+//   tabHistory.headIndex = Math.max(0, tabHistory.headIndex - 1);
+// });
+
+// $redoTabView.subscribe(async () => {
+//   const tabId = tabHistory.ids.at(tabHistory.headIndex + 1);
+//   if (!tabId) return;
+
+//   const tab = await chrome.tabs.get(tabId).catch(() => null);
+//   if (!tab) return;
+//   await chrome.windows.update(tab.windowId, { focused: true });
+//   await chrome.tabs.highlight({ tabs: tab.index });
+//   tabHistory.headIndex = Math.min(tabHistory.ids.length - 1, tabHistory.headIndex + 1);
+// });
 
 // TODO remember the active tab within a group
 // TODO cycle in the optimal direction
-$cycleNextGroup.subscribe(async () => {
-  // while the first tab or group is not highlights, cycle until it is so
+// $cycleNextGroup.subscribe(async () => {
+//   // while the first tab or group is not highlights, cycle until it is so
 
-  const allTabs = await chrome.tabs.query({ currentWindow: true });
-  const preGroupTabs = allTabs.map((t, index) => ({
-    tab: t,
-    vGroupId: t.groupId === chrome.tabGroups.TAB_GROUP_ID_NONE ? `_${index}` : t.groupId,
-  }));
-  const groupedTabs = [...orderedGroupBy(preGroupTabs, (tab) => tab.vGroupId)].map(([groupId, tabs]) => ({
-    groupId: typeof groupId === "string" ? chrome.tabGroups.TAB_GROUP_ID_NONE : groupId,
-    tabs: tabs.map((tab) => tab.tab),
-    highlighted: (tabs ?? []).some((tab) => tab.tab.highlighted),
-  }));
+//   const allTabs = await chrome.tabs.query({ currentWindow: true });
+//   const preGroupTabs = allTabs.map((t, index) => ({
+//     tab: t,
+//     vGroupId: t.groupId === chrome.tabGroups.TAB_GROUP_ID_NONE ? `_${index}` : t.groupId,
+//   }));
+//   const groupedTabs = [...orderedGroupBy(preGroupTabs, (tab) => tab.vGroupId)].map(([groupId, tabs]) => ({
+//     groupId: typeof groupId === "string" ? chrome.tabGroups.TAB_GROUP_ID_NONE : groupId,
+//     tabs: tabs.map((tab) => tab.tab),
+//     highlighted: (tabs ?? []).some((tab) => tab.tab.highlighted),
+//   }));
 
-  const shiftOffset = groupedTabs.findIndex((group) => group.highlighted) + 1;
+//   const shiftOffset = groupedTabs.findIndex((group) => group.highlighted) + 1;
 
-  console.log({ groupedTabs, shiftOffset });
+//   console.log({ groupedTabs, shiftOffset });
 
-  for (let i = 0; i < shiftOffset; i++) {
-    // find the first movable thing: group, if not, tab.
-    const [firstTab] = await chrome.tabs.query({ currentWindow: true, index: 0 });
-    if (!firstTab?.id) continue;
+//   for (let i = 0; i < shiftOffset; i++) {
+//     // find the first movable thing: group, if not, tab.
+//     const [firstTab] = await chrome.tabs.query({ currentWindow: true, index: 0 });
+//     if (!firstTab?.id) continue;
 
-    if (firstTab.groupId === chrome.tabGroups.TAB_GROUP_ID_NONE) {
-      await chrome.tabs.move(firstTab.id, { index: -1 });
-    } else {
-      await chrome.tabGroups.move(firstTab.groupId, { index: -1 });
-    }
-  }
+//     if (firstTab.groupId === chrome.tabGroups.TAB_GROUP_ID_NONE) {
+//       await chrome.tabs.move(firstTab.id, { index: -1 });
+//     } else {
+//       await chrome.tabGroups.move(firstTab.groupId, { index: -1 });
+//     }
+//   }
 
-  // highlight the first tab
-  const [newFirstTab] = await chrome.tabs.query({ currentWindow: true, index: 0 });
-  await chrome.tabs.highlight({ tabs: newFirstTab.index });
-});
+//   // highlight the first tab
+//   const [newFirstTab] = await chrome.tabs.query({ currentWindow: true, index: 0 });
+//   await chrome.tabs.highlight({ tabs: newFirstTab.index });
+// });
 
 // on created, assign group
 // TODO dedupe identical URLs
-$tabCreated.pipe(map(assignTab)).subscribe();
+// $tabCreated.pipe(map(assignTab)).subscribe();
 
-$closeCurrentGroup.subscribe(async () => {
-  // TODO NPT cannot be remove
-  const currentTab = await chrome.tabs.query({ currentWindow: true, highlighted: true }).then((tabs) => tabs.at(0));
-  console.log({ willCloseTabGroup: currentTab });
-  if (!currentTab?.id) return;
+// $closeCurrentGroup.subscribe(async () => {
+//   // TODO NPT cannot be remove
+//   const currentTab = await chrome.tabs.query({ currentWindow: true, highlighted: true }).then((tabs) => tabs.at(0));
+//   console.log({ willCloseTabGroup: currentTab });
+//   if (!currentTab?.id) return;
 
-  const currentTabGroupId = currentTab?.groupId;
+//   const currentTabGroupId = currentTab?.groupId;
 
-  if (currentTabGroupId === chrome.tabs.TAB_ID_NONE) {
-    chrome.tabs.remove(currentTab.id);
-    return;
-  } else {
-    const tabsInGroup = await chrome.tabs.query({ currentWindow: true, groupId: currentTabGroupId });
-    await Promise.allSettled(tabsInGroup.filter((tab) => tab.id).map((tab) => chrome.tabs.remove(tab.id!)));
-    return;
-  }
-});
+//   if (currentTabGroupId === chrome.tabs.TAB_ID_NONE) {
+//     chrome.tabs.remove(currentTab.id);
+//     return;
+//   } else {
+//     const tabsInGroup = await chrome.tabs.query({ currentWindow: true, groupId: currentTabGroupId });
+//     await Promise.allSettled(tabsInGroup.filter((tab) => tab.id).map((tab) => chrome.tabs.remove(tab.id!)));
+//     return;
+//   }
+// });
 
-async function assignTab(tab: chrome.tabs.Tab) {
-  console.log({ willAssignTab: tab });
+// async function assignTab(tab: chrome.tabs.Tab) {
+//   console.log({ willAssignTab: tab });
 
-  const isNewTab = await new Promise((resolve) => {
-    const url = new URL(tab.pendingUrl ?? tab.url ?? "");
-    resolve(url.hostname === "newtab");
-  }).catch(() => false);
+//   const isNewTab = await new Promise((resolve) => {
+//     const url = new URL(tab.pendingUrl ?? tab.url ?? "");
+//     resolve(url.hostname === "newtab");
+//   }).catch(() => false);
 
-  let newTabId: number | null = null;
+//   let newTabId: number | null = null;
 
-  if (isNewTab) {
-    // empty url implies empty tab
-    newTabId = await chrome.tabs.group({ tabIds: [tab.id!] });
-  } else {
-    const opener = tab.openerTabId;
-    if (opener === undefined) {
-      newTabId = await chrome.tabs.group({ tabIds: [tab.id!] });
-    } else {
-      // group with opener
-      const openerTab = await chrome.tabs.get(opener);
-      if (openerTab.groupId === chrome.tabGroups.TAB_GROUP_ID_NONE) {
-        newTabId = await chrome.tabs.group({ tabIds: [openerTab.id!, tab.id!] });
-      } else {
-        newTabId = await chrome.tabs.group({ tabIds: [tab.id!], groupId: openerTab.groupId });
-      }
-    }
-  }
-}
+//   if (isNewTab) {
+//     // empty url implies empty tab
+//     newTabId = await chrome.tabs.group({ tabIds: [tab.id!] });
+//   } else {
+//     const opener = tab.openerTabId;
+//     if (opener === undefined) {
+//       newTabId = await chrome.tabs.group({ tabIds: [tab.id!] });
+//     } else {
+//       // group with opener
+//       const openerTab = await chrome.tabs.get(opener);
+//       if (openerTab.groupId === chrome.tabGroups.TAB_GROUP_ID_NONE) {
+//         newTabId = await chrome.tabs.group({ tabIds: [openerTab.id!, tab.id!] });
+//       } else {
+//         newTabId = await chrome.tabs.group({ tabIds: [tab.id!], groupId: openerTab.groupId });
+//       }
+//     }
+//   }
+// }
 
 // const $tabUpsert = merge(
 //   $tabUpdated,
