@@ -122,12 +122,12 @@ $openNext
       chrome.tabs.highlight({ tabs: currentHighlightedIndex + 1 });
 
       // TODO: should we auto grow previous group?
-      const prevTabs = allTabs.slice(0, currentHighlightedIndex + 1);
-      if (prevTabs.length) {
-        const prevGroupId = prevTabs.map((tab) => tab.groupId).find((id) => id !== chrome.tabGroups.TAB_GROUP_ID_NONE);
-        const newGroup = await chrome.tabs.group({ tabIds: prevTabs.map((tab) => tab.id!), groupId: prevGroupId });
-        await chrome.tabGroups.update(newGroup, { title: `${prevTabs.length}`, collapsed: true });
-      }
+      // const prevTabs = allTabs.slice(0, currentHighlightedIndex + 1);
+      // if (prevTabs.length) {
+      //   const prevGroupId = prevTabs.map((tab) => tab.groupId).find((id) => id !== chrome.tabGroups.TAB_GROUP_ID_NONE);
+      //   const newGroup = await chrome.tabs.group({ tabIds: prevTabs.map((tab) => tab.id!), groupId: prevGroupId });
+      //   await chrome.tabGroups.update(newGroup, { title: `${prevTabs.length}`, collapsed: true });
+      // }
     }),
   )
   .subscribe();
