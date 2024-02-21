@@ -118,12 +118,13 @@ $openNext
 
       chrome.tabs.highlight({ tabs: currentHighlightedIndex + 1 });
 
-      const prevTabs = allTabs.slice(0, currentHighlightedIndex + 1);
-      if (prevTabs.length) {
-        const prevGroupId = prevTabs.map((tab) => tab.groupId).find((id) => id !== chrome.tabGroups.TAB_GROUP_ID_NONE);
-        const newGroup = await chrome.tabs.group({ tabIds: prevTabs.map((tab) => tab.id!), groupId: prevGroupId });
-        await chrome.tabGroups.update(newGroup, { title: `${prevTabs.length}`, collapsed: true });
-      }
+      // TODO: should we auto grow previous group?
+      // const prevTabs = allTabs.slice(0, currentHighlightedIndex + 1);
+      // if (prevTabs.length) {
+      //   const prevGroupId = prevTabs.map((tab) => tab.groupId).find((id) => id !== chrome.tabGroups.TAB_GROUP_ID_NONE);
+      //   const newGroup = await chrome.tabs.group({ tabIds: prevTabs.map((tab) => tab.id!), groupId: prevGroupId });
+      //   await chrome.tabGroups.update(newGroup, { title: `${prevTabs.length}`, collapsed: true });
+      // }
     }),
   )
   .subscribe();
@@ -140,11 +141,12 @@ $openPrevious
         .query({ currentWindow: true, index: currentHighlightedIndex - 1 })
         .then((tabs) => tabs.at(0)!);
 
-      if (previousTab.groupId !== chrome.tabGroups.TAB_GROUP_ID_NONE) await chrome.tabs.ungroup(previousTab.id!);
-
-      const remainingTabsInGroup = await chrome.tabs.query({ currentWindow: true, groupId: previousTab.groupId });
-      if (remainingTabsInGroup.length) {
-        await chrome.tabGroups.update(previousTab.groupId!, { title: `${remainingTabsInGroup.length}` });
+      if (previousTab.groupId !== chrome.tabGroups.TAB_GROUP_ID_NONE) {
+        await chrome.tabs.ungroup(previousTab.id!);
+        const remainingTabsInGroup = await chrome.tabs.query({ currentWindow: true, groupId: previousTab.groupId });
+        if (remainingTabsInGroup.length) {
+          await chrome.tabGroups.update(previousTab.groupId!, { title: `${remainingTabsInGroup.length}` });
+        }
       }
 
       chrome.tabs.highlight({ tabs: currentHighlightedIndex - 1 });
