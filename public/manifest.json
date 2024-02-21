@@ -28,6 +28,13 @@
     "print-debug": {
       "description": "Print debug"
     },
+    "next-jump": {
+      "description": "Next jump",
+      "suggested_key": {
+        "default": "Ctrl+Space",
+        "mac": "Command+Space"
+      }
+    },
     "open-previous": {
       "description": "Open previous",
       "suggested_key": {
@@ -45,8 +52,8 @@
     "organize-tabs": {
       "description": "Organize tabs",
       "suggested_key": {
-        "default": "Ctrl+Space",
-        "mac": "Command+Space"
+        "default": "Ctrl+G",
+        "mac": "Command+G"
       }
     }
   },

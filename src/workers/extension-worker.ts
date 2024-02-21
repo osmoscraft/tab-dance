@@ -16,6 +16,7 @@ import { Subject, filter, mergeMap, tap } from "rxjs";
 // IDEA ^IO navigates, ^Space removes child tree
 // IDEA ^IO undo tab opening, not just hiding
 // IDEA Ctrl-O closes last viewed tab, Ctrl-Shift-O navigate out without closing, Ctrl-I undo closing
+// IDEA Ctrl-Shift-O navigates out but brings current tab back in time
 
 const $tabHighlighted = new Subject<chrome.tabs.TabHighlightInfo>();
 const $tabUpdated = new Subject<{ tabId: number; changeInfo: chrome.tabs.TabChangeInfo; tab: chrome.tabs.Tab }>();
@@ -37,6 +38,49 @@ const $openPrevious = $command.pipe(filter((command) => command === "open-previo
 const $openNext = $command.pipe(filter((command) => command === "open-next"));
 const $printDebug = $command.pipe(filter((command) => command === "print-debug"));
 const $organizeTabs = $command.pipe(filter((command) => command === "organize-tabs"));
+const $nextJump = $command.pipe(filter((command) => command === "next-jump"));
+
+$nextJump
+  .pipe(
+    tap(async () => {
+      const allTabs = await chrome.tabs.query({ currentWindow: true });
+      const highlightedTab = allTabs.find((tab) => tab.highlighted);
+      const nextChild = allTabs.find((tab) => tab.openerTabId === (highlightedTab?.id ?? null));
+      if (nextChild) {
+        chrome.tabs.highlight({ tabs: nextChild.index });
+        return;
+      }
+
+      const parent = allTabs.find((tab) => tab.id === (highlightedTab?.openerTabId ?? null));
+      if (parent) {
+        const sibling = allTabs.find((tab) => tab.openerTabId === (parent.id ?? null));
+        if (sibling) {
+          chrome.tabs.highlight({ tabs: sibling.index });
+          chrome.tabs.remove(highlightedTab!.id!);
+          return;
+        }
+
+        chrome.tabs.highlight({ tabs: parent.index });
+        chrome.tabs.remove(highlightedTab!.id!);
+        return;
+      }
+
+      if (allTabs.length > 1) {
+        chrome.tabs.remove(highlightedTab!.id!);
+        return;
+      }
+
+      const currentNewTabHost = await lift(() => new URL(highlightedTab?.pendingUrl ?? highlightedTab?.url ?? ""))
+        .then((parsed) => parsed.host)
+        .catch(() => "");
+
+      if (currentNewTabHost !== "newtab") {
+        await chrome.tabs.create({});
+        chrome.tabs.remove(highlightedTab!.id!);
+      }
+    }),
+  )
+  .subscribe();
 
 $tabHighlighted
   .pipe(
@@ -183,4 +227,8 @@ async function handleExtensionInstall() {
 
 async function handleBrowserStart() {
   // TODO Start grouping on start
+}
+
+async function lift<T>(factory: () => T) {
+  return factory();
 }
