@@ -25,18 +25,14 @@
     "open_in_tab": true
   },
   "commands": {
+    "close-other-tabs": {
+      "description": "Close other tabs"
+    },
     "highlight-previous": {
       "description": "Highlight previous tab"
     },
     "highlight-next": {
       "description": "Highlight next tab"
-    },
-    "next-tab": {
-      "description": "Next tab",
-      "suggested_key": {
-        "default": "Ctrl+Space",
-        "mac": "Command+Space"
-      }
     }
   },
   "permissions": ["tabs", "commands"]

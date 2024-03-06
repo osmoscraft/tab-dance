@@ -11,7 +11,6 @@ export class TabTree {
 
   constructor() {
     this.tabsAsync = chrome.tabs.query({ currentWindow: true });
-
     this.tabsAsync.then(console.log);
   }
 
@@ -21,10 +20,19 @@ export class TabTree {
     await chrome.tabs.remove(visited.map((tab) => tab.id!));
   }
 
+  public async closeOtherTabs() {
+    const tabs = await this.tabsAsync;
+    const otherIds = tabs
+      .filter((tab) => !tab.highlighted)
+      .map((tab) => tab.id)
+      .filter(this.isDefined);
+    await chrome.tabs.remove(otherIds);
+  }
+
   public async highlight(offset: number) {
     const tabs = await this.tabsAsync;
     const highlightedIndex = tabs.find((tab) => tab.highlighted)?.index ?? 0;
-    const targetIndex = this.clamp(highlightedIndex + offset, 0, tabs.length - 1) % tabs.length;
+    const targetIndex = (tabs.length + highlightedIndex + offset) % tabs.length;
     console.log({ targetIndex });
     await chrome.tabs.highlight({ tabs: targetIndex });
   }
@@ -48,7 +56,7 @@ export class TabTree {
     return [...visited].map((index) => tabs.at(index)!);
   }
 
-  private clamp(value: number, min: number, max: number) {
-    return Math.min(Math.max(value, min), max);
+  private isDefined<T>(value: T | undefined): value is T {
+    return value !== undefined;
   }
 }
