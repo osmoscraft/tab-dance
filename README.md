@@ -5,5 +5,5 @@
 - ^2: previous tab
 - ^3: next tab
 - ^q: close tab
-- ^space: auto next
+- ^space: close all reachable visited tabs
 - fallback to script injection `window.close()` when tab close failed
