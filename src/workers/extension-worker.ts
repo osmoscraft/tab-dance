@@ -1,3 +1,5 @@
+import { TabTree } from "../lib/tab-tree";
+
 chrome.commands.onCommand.addListener(handleCommand);
 chrome.action.onClicked.addListener(handleActionClick);
 chrome.runtime.onInstalled.addListener(handleExtensionInstall);
@@ -9,6 +11,19 @@ chrome.runtime.onInstalled.addListener(handleExtensionInstall);
 // TODO options page to allow audio feedback
 
 async function handleCommand(command: string) {
+  switch (command) {
+    case "highlight-previous": {
+      const tree = new TabTree();
+      tree.highlight(-1);
+      break;
+    }
+    case "highlight-next": {
+      const tree = new TabTree();
+      tree.highlight(1);
+      break;
+    }
+  }
+
   if (command !== "next-tab") return;
 
   const allTabs = await chrome.tabs.query({ currentWindow: true });
