@@ -1,5 +1,5 @@
 {
-  "name": "Tab Streak",
+  "name": "Tab Dance",
   "description": "Speed up browsing and reduce tabs, with a single keypress",
   "version": "0.0.1",
   "manifest_version": 3,
@@ -25,6 +25,9 @@
     "open_in_tab": true
   },
   "commands": {
+    "close-tab-backward": {
+      "description": "Close current and highlight previous tab"
+    },
     "close-other-tabs": {
       "description": "Close other tabs"
     },
