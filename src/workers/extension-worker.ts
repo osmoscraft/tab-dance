@@ -12,6 +12,10 @@ async function handleCommand(command: string) {
   if (command !== "next-tab") return;
 
   const allTabs = await chrome.tabs.query({ currentWindow: true });
+
+  // const tree = new HistoryTree(allTabs);
+  // await tree.closeVisitedTree();
+
   const highlightedTab = allTabs.find((tab) => tab.highlighted);
   const nextChild = allTabs.find((tab) => tab.openerTabId === (highlightedTab?.id ?? null));
   if (nextChild) {
