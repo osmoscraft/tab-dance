@@ -21,6 +21,18 @@ export async function closeOtherTabs() {
   await chrome.tabs.remove(otherIds);
 }
 
+export async function closeOtherTrees() {
+  const tabs = await getTabs();
+  const root = getTreeRoot(tabs);
+  const reachableFromRoot = getReachable(tabs, root?.index);
+  const unreadableIds = tabs
+    .map((tab) => tab.id)
+    .filter(isDefined)
+    .filter((id) => !reachableFromRoot.some((tab) => tab.id === id));
+
+  await chrome.tabs.remove(unreadableIds);
+}
+
 export async function highlight(offset: number) {
   const tabs = await getTabs();
   const highlightedIndex = tabs.find((tab) => tab.highlighted)?.index ?? 0;
@@ -36,10 +48,25 @@ export interface TabTreeItem {
   openerTabId?: number;
 }
 
-function getReachable<T extends TabTreeItem>(tabs: T[]) {
-  const highlightedIndex = tabs.find((tab) => tab.highlighted)?.index;
+function getTreeRoot<T extends TabTreeItem>(tabs: T[], startIndex?: number) {
+  let rootIndex = startIndex === undefined ? tabs.find((tab) => tab.highlighted)?.index : startIndex;
 
-  const queue: number[] = highlightedIndex !== undefined ? [highlightedIndex] : [];
+  if (rootIndex === undefined) {
+    return;
+  }
+
+  let current = tabs.at(rootIndex);
+  while (current?.openerTabId !== undefined) {
+    current = tabs.find((tab) => tab.id === current?.openerTabId);
+  }
+
+  return current;
+}
+
+function getReachable<T extends TabTreeItem>(tabs: T[], rootIndex?: number) {
+  const chosenRootIndex = rootIndex === undefined ? tabs.find((tab) => tab.highlighted)?.index : rootIndex;
+
+  const queue: number[] = chosenRootIndex !== undefined ? [chosenRootIndex] : [];
   const visited = new Set<number>();
 
   while (queue.length > 0) {
