@@ -28,39 +28,19 @@ async function handleCommand(command: string) {
       toggleGrouping();
       break;
     }
-    case "new-tab": {
-      console.log("Not implemented: New tab");
-      break;
-    }
-    case "close-item": {
-      console.log("Not implemented: Close item");
-      break;
-    }
-    case "close-tab": {
-      console.log("Not implemented: Close tab");
-      break;
-    }
     case "close-others": {
       console.log("Not implemented: Close other items");
       break;
     }
     case "previous-item": {
-      console.log("Not implemented: Previous item");
-      break;
-    }
-    case "next-item": {
-      console.log("Not implemented: Next item");
-      break;
-    }
-
-    case "highlight-previous": {
       highlight(-1);
       break;
     }
-    case "highlight-next": {
+    case "next-item": {
       highlight(1);
       break;
     }
+
     case "close-other-tabs": {
       closeOtherTabs();
       break;
