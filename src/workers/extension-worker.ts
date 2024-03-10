@@ -1,15 +1,18 @@
-import { closeOtherTabs, handleNewTab, highlight, newItem, printDebugInfo, toggleGrouping } from "../lib/tab-actions";
-import { removeGraphEntry } from "../lib/tab-graph";
+import {
+  closeOtherTabs,
+  handleTabCreated,
+  handleTabRemoved,
+  highlight,
+  printDebugInfo,
+  toggleGrouping,
+} from "../lib/tab-actions";
 
 chrome.commands.onCommand.addListener(handleCommand);
 chrome.action.onClicked.addListener(handleActionClick);
 chrome.runtime.onInstalled.addListener(handleExtensionInstall);
 
-chrome.tabs.onCreated.addListener(handleNewTab);
-
-chrome.tabs.onRemoved.addListener(async (e) => {
-  await removeGraphEntry(e);
-});
+chrome.tabs.onCreated.addListener(handleTabCreated);
+chrome.tabs.onRemoved.addListener(handleTabRemoved);
 
 async function handleCommand(command: string) {
   switch (command) {
@@ -23,10 +26,6 @@ async function handleCommand(command: string) {
     }
     case "toggle-grouping": {
       toggleGrouping();
-      break;
-    }
-    case "new-item": {
-      newItem();
       break;
     }
     case "new-tab": {

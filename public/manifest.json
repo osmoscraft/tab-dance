@@ -31,12 +31,6 @@
     "toggle-grouping": {
       "description": "Toggle grouping"
     },
-    "new-item": {
-      "description": "New item"
-    },
-    "new-tab": {
-      "description": "New tab"
-    },
     "close-item": {
       "description": "Close item"
     },

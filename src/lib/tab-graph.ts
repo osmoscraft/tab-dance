@@ -2,6 +2,7 @@
 // caching results until appended
 // do not write if there is no change
 // auto remove unreachable tab?
+// Remove graphEntry leads to broken links, e.g. remove tree root while children are still present
 
 /**
  * Map: selfId -> openerId

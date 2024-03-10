@@ -1,4 +1,4 @@
-import { appendGraphEntry, getGraph } from "./tab-graph";
+import { appendGraphEntry, getGraph, removeGraphEntry } from "./tab-graph";
 
 export async function printDebugInfo() {
   const tabs = await getTabs();
@@ -16,22 +16,10 @@ export async function toggleGrouping() {
   }
 }
 
-export async function newItem() {
-  const tabs = await getTabs();
-  const sortedTabs = tabs.sort((a, b) => a.index - b.index);
-  const currentTab = tabs.find((tab) => tab.highlighted);
-  const newIndex = sortedTabs.findLastIndex((tab) => tab.groupId === currentTab?.groupId) + 1;
-
-  const newTab = await chrome.tabs.create({ index: newIndex, openerTabId: currentTab?.id });
-  if (currentTab?.groupId && currentTab.groupId !== chrome.tabGroups.TAB_GROUP_ID_NONE) {
-    await chrome.tabs.group({ tabIds: newTab.id!, groupId: currentTab.groupId });
-  }
-}
-
 /**
  * When tab opened from group, track the opener relation and move it to the end of the group
  */
-export async function handleNewTab<T extends TabTreeItem>(tab: T) {
+export async function handleTabCreated<T extends TabTreeItem>(tab: T) {
   if (tab.id && tab.openerTabId !== undefined) {
     const openerTab = await chrome.tabs.get(tab.openerTabId);
     if (openerTab.groupId !== chrome.tabGroups.TAB_GROUP_ID_NONE) {
@@ -39,6 +27,10 @@ export async function handleNewTab<T extends TabTreeItem>(tab: T) {
       await appendGraphEntry([tab.id, tab.openerTabId]);
     }
   }
+}
+
+export async function handleTabRemoved<T extends TabTreeItem>(tabId: number) {
+  await removeGraphEntry(tabId);
 }
 
 function withTabOpener<T extends TabTreeItem>(tabs: T[], graph: Map<number, number>): T[] {
