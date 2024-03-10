@@ -18,11 +18,13 @@ All actions should preserve pinned items
   - In group: close current group (or current tab is not in group) and focus next
   - Ctrl-Shift-W: same as the default Ctrl-W
 - Ctrl-Space
+  - Must self stablize: when there is no group, CtrlSpace twice should not change anything
   - Some tab is in group: ungroup
   - No tab is in group: group by tree
 - Ctrl-K
   - In tab: Close other tabs and groups
   - In group: Close other tabs in group, and ungroup current group
+  - Pressing twice always result closing all other tabs
 - Ctrl-3/Ctrl-4
   - Prev/next is a tab: prev/next tab
   - Prev/next is a group: prev/next group's last accessed tab (or last tab if none accessed)
