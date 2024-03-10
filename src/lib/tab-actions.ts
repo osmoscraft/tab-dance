@@ -1,6 +1,14 @@
-export async function toggleGrouping() {
+import { appendGraphEntry, getGraph } from "./tab-graph";
+
+export async function printDebugInfo() {
   const tabs = await getTabs();
-  const groupedTabs = [...new Set(tabs.filter((tab) => tab.groupId !== chrome.tabGroups.TAB_GROUP_ID_NONE))];
+  const graph = await getGraph();
+  console.log({ tabs, graph });
+}
+
+export async function toggleGrouping() {
+  const tabs = withTabOpener(await getTabs(), await getGraph());
+  const groupedTabs = tabs.filter((tab) => tab.groupId !== chrome.tabGroups.TAB_GROUP_ID_NONE);
   if (groupedTabs.length) {
     await chrome.tabs.ungroup(groupedTabs.map((tab) => tab.id).filter(isDefined));
   } else {
@@ -8,26 +16,59 @@ export async function toggleGrouping() {
   }
 }
 
+export async function newItem() {
+  const tabs = await getTabs();
+  const sortedTabs = tabs.sort((a, b) => a.index - b.index);
+  const currentTab = tabs.find((tab) => tab.highlighted);
+  const newIndex = sortedTabs.findLastIndex((tab) => tab.groupId === currentTab?.groupId) + 1;
+
+  const newTab = await chrome.tabs.create({ index: newIndex, openerTabId: currentTab?.id });
+  if (currentTab?.groupId && currentTab.groupId !== chrome.tabGroups.TAB_GROUP_ID_NONE) {
+    await chrome.tabs.group({ tabIds: newTab.id!, groupId: currentTab.groupId });
+  }
+}
+
+/**
+ * When tab opened from group, track the opener relation and move it to the end of the group
+ */
+export async function handleNewTab<T extends TabTreeItem>(tab: T) {
+  if (tab.id && tab.openerTabId !== undefined) {
+    const openerTab = await chrome.tabs.get(tab.openerTabId);
+    if (openerTab.groupId !== chrome.tabGroups.TAB_GROUP_ID_NONE) {
+      await chrome.tabs.group({ tabIds: tab.id, groupId: openerTab.groupId });
+      await appendGraphEntry([tab.id, tab.openerTabId]);
+    }
+  }
+}
+
+function withTabOpener<T extends TabTreeItem>(tabs: T[], graph: Map<number, number>): T[] {
+  return tabs.map((t) => ({
+    ...t,
+    openerTabId: t.id ? graph.get(t.id) : undefined,
+  }));
+}
+
 /**
  * Group all the tabs into trees using openerTabId as the parent-child relationship
  * Requirement: tabs must be ungrouped first
  */
-async function createTabTreeGroups<T extends TabTreeItem>(tabs: T[]) {
-  const tabsLeftToRight = tabs.sort((a, b) => a.index - b.index);
+async function createTabTreeGroups<T extends TabTreeItem>(tabs: T[], scopedIndices?: number[]) {
+  const chosenTabs = scopedIndices ? scopedIndices.map((index) => tabs.at(index)).filter(isDefined) : tabs;
+  const tabsLeftToRight = chosenTabs.sort((a, b) => a.index - b.index);
   const unvisitedTabIndices = new Set(tabsLeftToRight.map((tab) => tab.index));
 
-  const groupTasks: Promise<any>[] = [];
+  const createdGroupIdsAsync: Promise<number>[] = [];
 
   while (unvisitedTabIndices.size > 0) {
     const rootIndex = unvisitedTabIndices.values().next().value;
     const root = getTreeRoot(tabs, rootIndex);
     const reachable = getReachable(tabs, root?.index ?? rootIndex);
 
-    groupTasks.push(chrome.tabs.group({ tabIds: reachable.map((tab) => tab.id).filter(isDefined) }));
+    createdGroupIdsAsync.push(chrome.tabs.group({ tabIds: reachable.map((tab) => tab.id).filter(isDefined) }));
     reachable.forEach((tab) => unvisitedTabIndices.delete(tab.index));
   }
 
-  await Promise.allSettled(groupTasks);
+  return await Promise.all(createdGroupIdsAsync);
 }
 
 export async function closeVisitedTree() {

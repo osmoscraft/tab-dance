@@ -1,11 +1,22 @@
-import { closeOtherTabs, highlight, toggleGrouping } from "../lib/tab-actions";
+import { closeOtherTabs, handleNewTab, highlight, newItem, printDebugInfo, toggleGrouping } from "../lib/tab-actions";
+import { removeGraphEntry } from "../lib/tab-graph";
 
 chrome.commands.onCommand.addListener(handleCommand);
 chrome.action.onClicked.addListener(handleActionClick);
 chrome.runtime.onInstalled.addListener(handleExtensionInstall);
 
+chrome.tabs.onCreated.addListener(handleNewTab);
+
+chrome.tabs.onRemoved.addListener(async (e) => {
+  await removeGraphEntry(e);
+});
+
 async function handleCommand(command: string) {
   switch (command) {
+    case "print-debug-info": {
+      printDebugInfo();
+      break;
+    }
     case "toggle-extension": {
       console.log("Not implemented: Toggle extension");
       break;
@@ -15,7 +26,7 @@ async function handleCommand(command: string) {
       break;
     }
     case "new-item": {
-      console.log("Not implemented: New item");
+      newItem();
       break;
     }
     case "new-tab": {
@@ -57,6 +68,16 @@ async function handleCommand(command: string) {
     }
   }
 }
+
+chrome.tabs.onCreated.addListener(async (tab) => {
+  console.log("created", {
+    id: tab.id,
+    title: tab.title,
+    url: [tab.pendingUrl, tab.url],
+    status: tab.status,
+    opener: tab.openerTabId,
+  });
+});
 
 function handleActionClick() {
   chrome.runtime.openOptionsPage();

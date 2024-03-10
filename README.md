@@ -11,8 +11,8 @@ All actions should preserve pinned items
 
 - Ctrl-T
   - In tab: Open and highlight new tab
+  - In group: Open and highlight new tab in the same group
   - Ctrl-Shift-T: open new tab (same as the default Ctrl-T)
-  - What if we open new tab in group by default, allow a one-time chance to close others in group?
 - Ctrl-W
   - In tab: close current tab and focus next
   - In group: close current group (or current tab is not in group) and focus next
@@ -28,3 +28,13 @@ All actions should preserve pinned items
 - Ctrl-3/Ctrl-4
   - Prev/next is a tab: prev/next tab
   - Prev/next is a group: prev/next group's last accessed tab (or last tab if none accessed)
+
+## New tab behavior (Ctrl-T)
+
+- If current tab is in group, open in the same group
+- If current tab is not in group, create group and open in the group
+
+## Opener tracking
+
+- If open new tab from group, the new tab belows to the group
+- If open new tab from tab, the new tab is its own root

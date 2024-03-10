@@ -51,7 +51,10 @@
     },
     "next-item": {
       "description": "Next item"
+    },
+    "print-debug-info": {
+      "description": "Print debug info"
     }
   },
-  "permissions": ["tabs", "tabGroups", "commands"]
+  "permissions": ["tabs", "tabGroups", "commands", "storage"]
 }
