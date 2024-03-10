@@ -1,9 +1,33 @@
-export async function closeTabBackward() {
-  const currentId = (await getTabs()).find((tab) => tab.highlighted)?.id;
-  await highlight(-1);
-  if (currentId !== undefined) {
-    await chrome.tabs.remove(currentId);
+export async function toggleGrouping() {
+  const tabs = await getTabs();
+  const groupedTabs = [...new Set(tabs.filter((tab) => tab.groupId !== chrome.tabGroups.TAB_GROUP_ID_NONE))];
+  if (groupedTabs.length) {
+    await chrome.tabs.ungroup(groupedTabs.map((tab) => tab.id).filter(isDefined));
+  } else {
+    await createTabTreeGroups(tabs);
   }
+}
+
+/**
+ * Group all the tabs into trees using openerTabId as the parent-child relationship
+ * Requirement: tabs must be ungrouped first
+ */
+async function createTabTreeGroups<T extends TabTreeItem>(tabs: T[]) {
+  const tabsLeftToRight = tabs.sort((a, b) => a.index - b.index);
+  const unvisitedTabIndices = new Set(tabsLeftToRight.map((tab) => tab.index));
+
+  const groupTasks: Promise<any>[] = [];
+
+  while (unvisitedTabIndices.size > 0) {
+    const rootIndex = unvisitedTabIndices.values().next().value;
+    const root = getTreeRoot(tabs, rootIndex);
+    const reachable = getReachable(tabs, root?.index ?? rootIndex);
+
+    groupTasks.push(chrome.tabs.group({ tabIds: reachable.map((tab) => tab.id).filter(isDefined) }));
+    reachable.forEach((tab) => unvisitedTabIndices.delete(tab.index));
+  }
+
+  await Promise.allSettled(groupTasks);
 }
 
 export async function closeVisitedTree() {

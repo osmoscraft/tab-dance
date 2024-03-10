@@ -53,5 +53,5 @@
       "description": "Next item"
     }
   },
-  "permissions": ["tabs", "commands"]
+  "permissions": ["tabs", "tabGroups", "commands"]
 }

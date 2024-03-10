@@ -10,18 +10,18 @@
 All actions should preserve pinned items
 
 - Ctrl-T
-  - In tab: Replace current tab with empty tab
-  - In group: Replace current group with empty tab and ungroup current group
+  - In tab: Open and highlight new tab
   - Ctrl-Shift-T: open new tab (same as the default Ctrl-T)
+  - What if we open new tab in group by default, allow a one-time chance to close others in group?
 - Ctrl-W
   - In tab: close current tab and focus next
   - In group: close current group (or current tab is not in group) and focus next
   - Ctrl-Shift-W: same as the default Ctrl-W
-- Ctrl-Space
-  - Must self stablize: when there is no group, CtrlSpace twice should not change anything
+- Ctrl-G
   - Some tab is in group: ungroup
   - No tab is in group: group by tree
-- Ctrl-K
+  - Must self stablize: when there is no group, CtrlSpace twice should not change anything
+- Ctrl-Space
   - In tab: Close other tabs and groups
   - In group: Close other tabs in group, and ungroup current group
   - Pressing twice always result closing all other tabs
