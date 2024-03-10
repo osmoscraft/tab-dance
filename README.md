@@ -11,7 +11,7 @@ All actions should preserve pinned items
 
 - Ctrl-T
   - In tab: Replace current tab with empty tab
-  - In group: Replace current group with empty tab
+  - In group: Replace current group with empty tab and ungroup current group
   - Ctrl-Shift-T: open new tab (same as the default Ctrl-T)
 - Ctrl-W
   - In tab: close current tab and focus next

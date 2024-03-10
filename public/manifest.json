@@ -25,17 +25,32 @@
     "open_in_tab": true
   },
   "commands": {
-    "close-tab-backward": {
-      "description": "Close current and highlight previous tab"
+    "toggle-extension": {
+      "description": "Toggle extension"
     },
-    "close-other-tabs": {
-      "description": "Close other tabs"
+    "toggle-grouping": {
+      "description": "Toggle grouping"
     },
-    "highlight-previous": {
-      "description": "Highlight previous tab"
+    "new-item": {
+      "description": "New item"
     },
-    "highlight-next": {
-      "description": "Highlight next tab"
+    "new-tab": {
+      "description": "New tab"
+    },
+    "close-item": {
+      "description": "Close item"
+    },
+    "close-tab": {
+      "description": "Close tab"
+    },
+    "close-others": {
+      "description": "Close other items"
+    },
+    "previous-item": {
+      "description": "Previous item"
+    },
+    "next-item": {
+      "description": "Next item"
     }
   },
   "permissions": ["tabs", "commands"]
