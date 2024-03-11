@@ -34,12 +34,11 @@ export async function closeOthers() {
   if (!closingTab) return;
 
   if (closingTab.groupId !== chrome.tabGroups.TAB_GROUP_ID_NONE) {
-    // close others groups
-    const otherIds = tabs
-      .filter((tab) => tab.groupId !== closingTab.groupId)
-      .map((tab) => tab.id)
-      .filter(isDefined);
-    await chrome.tabs.remove(otherIds);
+    // close others in group
+    const otherTagsInGroup = tabs.filter((tab) => tab.groupId === closingTab.groupId && tab.id !== closingTab.id);
+
+    await chrome.tabs.remove(otherTagsInGroup.map((tab) => tab.id).filter(isDefined));
+    await chrome.tabs.ungroup([closingTab.id!]);
   } else {
     // close everything else
     const otherIds = tabs
