@@ -50,6 +50,12 @@ export async function closeOthers() {
 }
 
 export async function handleTabRemoved<T extends TabTreeItem>(tabId: number) {
+  // onClose
+  // highlight the next child
+  // if no next sibling
+  // if no sibling, highlight parent
+  // if no parent, use browser default behavior
+
   await removeGraphEntry(tabId);
 }
 
