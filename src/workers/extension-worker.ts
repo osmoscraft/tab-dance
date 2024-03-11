@@ -1,4 +1,5 @@
 import {
+  closeItem,
   closeOtherTabs,
   handleTabCreated,
   handleTabRemoved,
@@ -26,6 +27,10 @@ async function handleCommand(command: string) {
     }
     case "toggle-grouping": {
       toggleGrouping();
+      break;
+    }
+    case "close-item": {
+      closeItem();
       break;
     }
     case "close-others": {

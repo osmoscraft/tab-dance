@@ -29,6 +29,11 @@ export async function handleTabCreated<T extends TabTreeItem>(tab: T) {
   }
 }
 
+export async function closeItem() {
+  const tabs = await getTabs();
+  const closingGroupId = tabs.find((tab) => tab.highlighted)?.groupId ?? chrome.tabGroups.TAB_GROUP_ID_NONE;
+}
+
 export async function handleTabRemoved<T extends TabTreeItem>(tabId: number) {
   await removeGraphEntry(tabId);
 }
@@ -94,7 +99,6 @@ export async function highlight(offset: number) {
   const tabs = await getTabs();
   const highlightedIndex = tabs.find((tab) => tab.highlighted)?.index ?? 0;
   const targetIndex = (tabs.length + highlightedIndex + offset) % tabs.length;
-  console.log({ targetIndex });
   await chrome.tabs.highlight({ tabs: targetIndex });
 }
 
