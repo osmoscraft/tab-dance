@@ -16,16 +16,15 @@ export async function toggleGrouping() {
   }
 }
 
-/**
- * When tab opened from group, track the opener relation and move it to the end of the group
- */
 export async function handleTabCreated<T extends TabTreeItem>(tab: T) {
   if (tab.id && tab.openerTabId !== undefined) {
-    const openerTab = await chrome.tabs.get(tab.openerTabId);
-    if (openerTab.groupId !== chrome.tabGroups.TAB_GROUP_ID_NONE) {
-      await chrome.tabs.group({ tabIds: tab.id, groupId: openerTab.groupId });
-      await appendGraphEntry([tab.id, tab.openerTabId]);
-    }
+    // tracker opener except for newtab
+    const isNewTab = await lift(() => new URL(tab.pendingUrl ?? tab.url ?? ""))
+      .then((url) => url.hostname === "newtab")
+      .catch(() => false);
+    if (isNewTab) return;
+
+    await appendGraphEntry([tab.id, tab.openerTabId]);
   }
 }
 
@@ -107,6 +106,8 @@ export interface TabTreeItem {
   id?: number;
   highlighted?: boolean;
   openerTabId?: number;
+  url?: string;
+  pendingUrl?: string;
 }
 
 function getTreeRoot<T extends TabTreeItem>(tabs: T[], startIndex?: number) {
@@ -149,4 +150,10 @@ function isDefined<T>(value: T | undefined): value is T {
 
 async function getTabs() {
   return chrome.tabs.query({ currentWindow: true });
+}
+
+function lift<T>(thunk: () => T) {
+  return new Promise<T>((resolve) => {
+    resolve(thunk());
+  });
 }

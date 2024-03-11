@@ -36,5 +36,5 @@ All actions should preserve pinned items
 
 ## Opener tracking
 
-- If open new tab from group, the new tab belows to the group
-- If open new tab from tab, the new tab is its own root
+- If open new tab from group, the new tab belong to the group
+- If open new tab from tab, blank tabs start a new group, other tabs still belong to the same group
