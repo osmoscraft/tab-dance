@@ -1,6 +1,5 @@
 import {
-  closeItem,
-  closeOtherTabs,
+  closeOthers,
   handleTabCreated,
   handleTabRemoved,
   highlight,
@@ -16,6 +15,7 @@ chrome.tabs.onCreated.addListener(handleTabCreated);
 chrome.tabs.onRemoved.addListener(handleTabRemoved);
 
 async function handleCommand(command: string) {
+  console.log(`Command: ${command}`);
   switch (command) {
     case "print-debug-info": {
       printDebugInfo();
@@ -30,11 +30,11 @@ async function handleCommand(command: string) {
       break;
     }
     case "close-item": {
-      closeItem();
+      console.log("Not implemented: Toggle extension");
       break;
     }
     case "close-others": {
-      console.log("Not implemented: Close other items");
+      closeOthers();
       break;
     }
     case "previous-item": {
@@ -43,11 +43,6 @@ async function handleCommand(command: string) {
     }
     case "next-item": {
       highlight(1);
-      break;
-    }
-
-    case "close-other-tabs": {
-      closeOtherTabs();
       break;
     }
   }

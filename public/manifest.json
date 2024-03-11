@@ -31,11 +31,8 @@
     "toggle-grouping": {
       "description": "Toggle grouping"
     },
-    "close-item": {
-      "description": "Close item"
-    },
     "close-others": {
-      "description": "Close other items"
+      "description": "Close others"
     },
     "previous-item": {
       "description": "Previous item"

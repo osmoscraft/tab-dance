@@ -28,9 +28,26 @@ export async function handleTabCreated<T extends TabTreeItem>(tab: T) {
   }
 }
 
-export async function closeItem() {
+export async function closeOthers() {
   const tabs = await getTabs();
-  const closingGroupId = tabs.find((tab) => tab.highlighted)?.groupId ?? chrome.tabGroups.TAB_GROUP_ID_NONE;
+  const closingTab = tabs.find((tab) => tab.highlighted);
+  if (!closingTab) return;
+
+  if (closingTab.groupId !== chrome.tabGroups.TAB_GROUP_ID_NONE) {
+    // close others groups
+    const otherIds = tabs
+      .filter((tab) => tab.groupId !== closingTab.groupId)
+      .map((tab) => tab.id)
+      .filter(isDefined);
+    await chrome.tabs.remove(otherIds);
+  } else {
+    // close everything else
+    const otherIds = tabs
+      .filter((tab) => !tab.highlighted)
+      .map((tab) => tab.id)
+      .filter(isDefined);
+    await chrome.tabs.remove(otherIds);
+  }
 }
 
 export async function handleTabRemoved<T extends TabTreeItem>(tabId: number) {
@@ -71,15 +88,6 @@ export async function closeVisitedTree() {
   const tabs = await getTabs();
   const visited = getReachable(tabs).filter((tab) => tab.lastAccessed !== undefined);
   await chrome.tabs.remove(visited.map((tab) => tab.id!));
-}
-
-export async function closeOtherTabs() {
-  const tabs = await getTabs();
-  const otherIds = tabs
-    .filter((tab) => !tab.highlighted)
-    .map((tab) => tab.id)
-    .filter(isDefined);
-  await chrome.tabs.remove(otherIds);
 }
 
 export async function closeOtherTrees() {
