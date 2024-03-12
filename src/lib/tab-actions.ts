@@ -64,13 +64,35 @@ export async function moveTabs(offset: number) {
   const [packStartIndex, packEndIndex] = [packedTabs.at(0)!.index, packedTabs.at(-1)!.index];
   if (offset < 0) {
     // move segment before the packed tabs to the end of the packed tabs
-    tabs
-      .slice(packStartIndex + offset, packStartIndex)
-      .map((tab) => chrome.tabs.move(tab.id!, { index: tab.index + packedTabs.length }));
+    await Promise.all(
+      tabs
+        .slice(packStartIndex + offset, packStartIndex)
+        .map((tab) => chrome.tabs.move(tab.id!, { index: tab.index + packedTabs.length })),
+    );
   } else {
-    tabs
-      .slice(packEndIndex + 1, packEndIndex + 1 + offset)
-      .map((tab) => chrome.tabs.move(tab.id!, { index: tab.index - packedTabs.length }));
+    await Promise.all(
+      tabs
+        .slice(packEndIndex + 1, packEndIndex + 1 + offset)
+        .map((tab) => chrome.tabs.move(tab.id!, { index: tab.index - packedTabs.length })),
+    );
+  }
+}
+
+export async function growTabs(offset: number) {
+  const tabs = await getTabs();
+  const highlightedTabs = [...tabs.filter((tab) => tab.highlighted)].sort((a, b) => a.index - b.index);
+  if (!highlightedTabs.length) return;
+  const [startIndex, endIndex] = [highlightedTabs.at(0)!.index, highlightedTabs.at(-1)!.index];
+
+  if (offset < 0) {
+    const highlightIndices = tabs.slice(startIndex + offset, endIndex + 1).map((tab) => tab.index);
+    await chrome.tabs.highlight({ tabs: highlightIndices });
+  } else {
+    const highlightIndices = tabs
+      .slice(startIndex, endIndex + 1 + offset)
+      .map((tab) => tab.index)
+      .reverse();
+    await chrome.tabs.highlight({ tabs: highlightIndices });
   }
 }
 
@@ -128,8 +150,8 @@ export async function closeOtherTrees() {
 
 export async function openTab(offset: number) {
   const tabs = await getTabs();
-  const highlightedIndex = tabs.find((tab) => tab.highlighted)?.index ?? 0;
-  const targetIndex = (tabs.length + highlightedIndex + offset) % tabs.length;
+  const activeIndex = tabs.find((tab) => tab.active)?.index ?? 0;
+  const targetIndex = (tabs.length + activeIndex + offset) % tabs.length;
   await chrome.tabs.highlight({ tabs: [targetIndex] });
 }
 

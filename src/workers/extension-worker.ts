@@ -1,4 +1,12 @@
-import { closeOthers, handleTabCreated, handleTabRemoved, moveTabs, openTab, printDebugInfo } from "../lib/tab-actions";
+import {
+  closeOthers,
+  growTabs,
+  handleTabCreated,
+  handleTabRemoved,
+  moveTabs,
+  openTab,
+  printDebugInfo,
+} from "../lib/tab-actions";
 
 chrome.commands.onCommand.addListener(handleCommand);
 chrome.action.onClicked.addListener(handleActionClick);
@@ -38,6 +46,14 @@ async function handleCommand(command: string) {
     }
     case "move-next": {
       moveTabs(1);
+      break;
+    }
+    case "grow-previous": {
+      growTabs(-1);
+      break;
+    }
+    case "grow-next": {
+      growTabs(1);
       break;
     }
   }
