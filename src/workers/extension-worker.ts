@@ -6,6 +6,7 @@ import {
   moveTabs,
   openTab,
   printDebugInfo,
+  toggleSelect,
 } from "../lib/tab-actions";
 
 chrome.commands.onCommand.addListener(handleCommand);
@@ -54,6 +55,10 @@ async function handleCommand(command: string) {
     }
     case "grow-next": {
       growTabs(1);
+      break;
+    }
+    case "toggle-select": {
+      toggleSelect();
       break;
     }
   }

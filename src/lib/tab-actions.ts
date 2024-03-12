@@ -1,9 +1,11 @@
 import { appendGraphEntry, getGraph, removeGraphEntry } from "./tab-graph";
+import { addMark, getMarks, removeMark } from "./tab-marks";
 
 export async function printDebugInfo() {
   const tabs = await getTabs();
   const graph = await getGraph();
-  console.log({ tabs, graph });
+  const marks = await getMarks();
+  console.log({ tabs, graph, marks });
 }
 
 export async function toggleGrouping() {
@@ -28,14 +30,42 @@ export async function handleTabCreated<T extends TabTreeItem>(tab: T) {
   }
 }
 
+export async function toggleSelect() {
+  const tabs = await getTabs();
+  const marks = await getMarks();
+  const activeTab = tabs.find((tab) => tab.active);
+  if (activeTab) {
+    if (marks.has(activeTab.id!)) {
+      await removeMark(activeTab.id!);
+    } else {
+      await addMark(activeTab.id!);
+    }
+  }
+}
+
 export async function closeOthers() {
   const tabs = await getTabs();
-  const otherIds = tabs
-    .filter((tab) => !tab.highlighted)
-    .map((tab) => tab.id)
-    .filter(isDefined);
-  await chrome.tabs.remove(otherIds);
-  // await chrome.tabs.discard();
+
+  // first discard tabs to allow undo
+  const discarded = tabs.filter((tab) => tab.discarded);
+  if (!discarded.length) {
+    const otherIds = tabs
+      .filter((tab) => !tab.highlighted)
+      .map((tab) => tab.id)
+      .filter(isDefined);
+
+    await Promise.all(otherIds.map((id) => chrome.tabs.discard(id)));
+    return;
+  }
+
+  // second, if already has discard, commit action
+  const highlighed = tabs.filter((tab) => tab.highlighted);
+  if (highlighed.length > 1) {
+    const activeIndex = await tabs.find((tab) => tab.active)!.index;
+    await chrome.tabs.highlight({ tabs: [activeIndex] });
+  }
+
+  await chrome.tabs.remove(discarded.map((tab) => tab.id!));
 }
 
 export async function moveTabs(offset: number) {
@@ -98,6 +128,7 @@ export async function growTabs(offset: number) {
 
 export async function handleTabRemoved<T extends TabTreeItem>(tabId: number) {
   await removeGraphEntry(tabId);
+  await removeMark(tabId);
 }
 
 function withTabOpener<T extends TabTreeItem>(tabs: T[], graph: Map<number, number>): T[] {
@@ -152,7 +183,11 @@ export async function openTab(offset: number) {
   const tabs = await getTabs();
   const activeIndex = tabs.find((tab) => tab.active)?.index ?? 0;
   const targetIndex = (tabs.length + activeIndex + offset) % tabs.length;
-  await chrome.tabs.highlight({ tabs: [targetIndex] });
+  const marks = await getMarks();
+  const markIndices = [...marks]
+    .map((mark) => tabs.findIndex((tab) => tab.id === mark))
+    .filter((index) => index !== -1);
+  await chrome.tabs.highlight({ tabs: [targetIndex, ...markIndices] });
 }
 
 export interface TabTreeItem {

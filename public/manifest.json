@@ -55,8 +55,8 @@
     "print-debug-info": {
       "description": "Print debug info"
     },
-    "mark-tab": {
-      "description": "Mark tab"
+    "toggle-select": {
+      "description": "Toggle select"
     }
   },
   "permissions": ["tabs", "tabGroups", "commands", "storage"]
