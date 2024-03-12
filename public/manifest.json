@@ -35,7 +35,7 @@
       "description": "Close others"
     },
     "open-previous": {
-      "description": "Open previou"
+      "description": "Open previous"
     },
     "open-next": {
       "description": "Open next"
@@ -55,8 +55,11 @@
     "print-debug-info": {
       "description": "Print debug info"
     },
-    "toggle-select": {
-      "description": "Toggle select"
+    "toggle-selection": {
+      "description": "Toggle selection"
+    },
+    "cancel-selection": {
+      "description": "Cancel selection"
     }
   },
   "permissions": ["tabs", "tabGroups", "commands", "storage"]

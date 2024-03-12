@@ -43,6 +43,11 @@ export async function toggleSelect() {
   }
 }
 
+export async function cancelSelection() {
+  const tabs = await getTabs();
+  await clearSelectionInternal(tabs);
+}
+
 export async function closeOthers() {
   const tabs = await getTabs();
 
@@ -59,14 +64,18 @@ export async function closeOthers() {
   }
 
   // second, if already has discard, commit action
+  await clearSelectionInternal(tabs);
+
+  await chrome.tabs.remove(discarded.map((tab) => tab.id!));
+}
+
+async function clearSelectionInternal<T extends TabTreeItem>(tabs: T[]) {
   const nonActiveHighlighted = tabs.filter((tab) => !tab.active && tab.highlighted);
   if (nonActiveHighlighted.length) {
-    const activeIndex = await tabs.find((tab) => tab.active)!.index;
+    const activeIndex = tabs.find((tab) => tab.active)!.index;
     await chrome.tabs.highlight({ tabs: [activeIndex] });
     await clearMarks();
   }
-
-  await chrome.tabs.remove(discarded.map((tab) => tab.id!));
 }
 
 export async function moveTabs(offset: number) {
@@ -194,6 +203,7 @@ export async function openTab(offset: number) {
 export interface TabTreeItem {
   index: number;
   id?: number;
+  active: boolean;
   highlighted?: boolean;
   openerTabId?: number;
   url?: string;
