@@ -54,6 +54,9 @@
     },
     "print-debug-info": {
       "description": "Print debug info"
+    },
+    "mark-tab": {
+      "description": "Mark tab"
     }
   },
   "permissions": ["tabs", "tabGroups", "commands", "storage"]
