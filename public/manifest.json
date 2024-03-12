@@ -34,11 +34,23 @@
     "close-others": {
       "description": "Close others"
     },
-    "previous-item": {
-      "description": "Previous item"
+    "open-previous": {
+      "description": "Open previou"
     },
-    "next-item": {
-      "description": "Next item"
+    "open-next": {
+      "description": "Open next"
+    },
+    "grow-previous": {
+      "description": "Grow previous"
+    },
+    "grow-next": {
+      "description": "Grow next"
+    },
+    "move-previous": {
+      "description": "Move previous"
+    },
+    "move-next": {
+      "description": "Move next"
     },
     "print-debug-info": {
       "description": "Print debug info"

@@ -1,11 +1,4 @@
-import {
-  closeOthers,
-  handleTabCreated,
-  handleTabRemoved,
-  highlight,
-  printDebugInfo,
-  toggleGrouping,
-} from "../lib/tab-actions";
+import { closeOthers, handleTabCreated, handleTabRemoved, moveTabs, openTab, printDebugInfo } from "../lib/tab-actions";
 
 chrome.commands.onCommand.addListener(handleCommand);
 chrome.action.onClicked.addListener(handleActionClick);
@@ -21,15 +14,9 @@ async function handleCommand(command: string) {
       printDebugInfo();
       break;
     }
-    case "toggle-extension": {
-      console.log("Not implemented: Toggle extension");
-      break;
-    }
+    case "toggle-extension":
+    case "close-item":
     case "toggle-grouping": {
-      toggleGrouping();
-      break;
-    }
-    case "close-item": {
       console.log("Not implemented: Toggle extension");
       break;
     }
@@ -37,12 +24,20 @@ async function handleCommand(command: string) {
       closeOthers();
       break;
     }
-    case "previous-item": {
-      highlight(-1);
+    case "open-previous": {
+      openTab(-1);
       break;
     }
-    case "next-item": {
-      highlight(1);
+    case "open-next": {
+      openTab(1);
+      break;
+    }
+    case "move-previous": {
+      moveTabs(-1);
+      break;
+    }
+    case "move-next": {
+      moveTabs(1);
       break;
     }
   }

@@ -30,32 +30,51 @@ export async function handleTabCreated<T extends TabTreeItem>(tab: T) {
 
 export async function closeOthers() {
   const tabs = await getTabs();
-  const closingTab = tabs.find((tab) => tab.highlighted);
-  if (!closingTab) return;
+  const otherIds = tabs
+    .filter((tab) => !tab.highlighted)
+    .map((tab) => tab.id)
+    .filter(isDefined);
+  await chrome.tabs.remove(otherIds);
+  // await chrome.tabs.discard();
+}
 
-  if (closingTab.groupId !== chrome.tabGroups.TAB_GROUP_ID_NONE) {
-    // close others in group
-    const otherTagsInGroup = tabs.filter((tab) => tab.groupId === closingTab.groupId && tab.id !== closingTab.id);
+export async function moveTabs(offset: number) {
+  const tabs = await getTabs();
+  const highlightedTabs = [...tabs.filter((tab) => tab.highlighted)].sort((a, b) => a.index - b.index);
+  if (!highlightedTabs.length) return;
+  const [startIndex, endIndex] = [highlightedTabs.at(0)!.index, highlightedTabs.at(-1)!.index];
 
-    await chrome.tabs.remove(otherTagsInGroup.map((tab) => tab.id).filter(isDefined));
-    await chrome.tabs.ungroup([closingTab.id!]);
+  const packedTabs = highlightedTabs.map((tab, packOffset) => ({
+    ...tab,
+    packIndex: offset < 0 ? startIndex + packOffset : endIndex - highlightedTabs.length + 1 + packOffset,
+  }));
+
+  let isPacking = false;
+  await Promise.all(
+    packedTabs.map((tab, index) => {
+      if (tab.index !== tab.packIndex) {
+        isPacking = true;
+        return chrome.tabs.move(tab.id!, { index: tab.packIndex });
+      }
+    }),
+  );
+
+  if (isPacking) return;
+
+  const [packStartIndex, packEndIndex] = [packedTabs.at(0)!.index, packedTabs.at(-1)!.index];
+  if (offset < 0) {
+    // move segment before the packed tabs to the end of the packed tabs
+    tabs
+      .slice(packStartIndex + offset, packStartIndex)
+      .map((tab) => chrome.tabs.move(tab.id!, { index: tab.index + packedTabs.length }));
   } else {
-    // close everything else
-    const otherIds = tabs
-      .filter((tab) => !tab.highlighted)
-      .map((tab) => tab.id)
-      .filter(isDefined);
-    await chrome.tabs.remove(otherIds);
+    tabs
+      .slice(packEndIndex + 1, packEndIndex + 1 + offset)
+      .map((tab) => chrome.tabs.move(tab.id!, { index: tab.index - packedTabs.length }));
   }
 }
 
 export async function handleTabRemoved<T extends TabTreeItem>(tabId: number) {
-  // onClose
-  // highlight the next child
-  // if no next sibling
-  // if no sibling, highlight parent
-  // if no parent, use browser default behavior
-
   await removeGraphEntry(tabId);
 }
 
@@ -107,11 +126,11 @@ export async function closeOtherTrees() {
   await chrome.tabs.remove(unreadableIds);
 }
 
-export async function highlight(offset: number) {
+export async function openTab(offset: number) {
   const tabs = await getTabs();
   const highlightedIndex = tabs.find((tab) => tab.highlighted)?.index ?? 0;
   const targetIndex = (tabs.length + highlightedIndex + offset) % tabs.length;
-  await chrome.tabs.highlight({ tabs: targetIndex });
+  await chrome.tabs.highlight({ tabs: [targetIndex] });
 }
 
 export interface TabTreeItem {
