@@ -1,5 +1,5 @@
 import { appendGraphEntry, getGraph, removeGraphEntry } from "./tab-graph";
-import { addMark, getMarks, removeMark } from "./tab-marks";
+import { addMarks, clearMarks, getMarks, removeMarks } from "./tab-marks";
 
 export async function printDebugInfo() {
   const tabs = await getTabs();
@@ -36,9 +36,9 @@ export async function toggleSelect() {
   const activeTab = tabs.find((tab) => tab.active);
   if (activeTab) {
     if (marks.has(activeTab.id!)) {
-      await removeMark(activeTab.id!);
+      await removeMarks([activeTab.id!]);
     } else {
-      await addMark(activeTab.id!);
+      await addMarks([activeTab.id!]);
     }
   }
 }
@@ -59,10 +59,11 @@ export async function closeOthers() {
   }
 
   // second, if already has discard, commit action
-  const highlighed = tabs.filter((tab) => tab.highlighted);
-  if (highlighed.length > 1) {
+  const nonActiveHighlighted = tabs.filter((tab) => !tab.active && tab.highlighted);
+  if (nonActiveHighlighted.length) {
     const activeIndex = await tabs.find((tab) => tab.active)!.index;
     await chrome.tabs.highlight({ tabs: [activeIndex] });
+    await clearMarks();
   }
 
   await chrome.tabs.remove(discarded.map((tab) => tab.id!));
@@ -128,7 +129,7 @@ export async function growTabs(offset: number) {
 
 export async function handleTabRemoved<T extends TabTreeItem>(tabId: number) {
   await removeGraphEntry(tabId);
-  await removeMark(tabId);
+  await removeMarks([tabId]);
 }
 
 function withTabOpener<T extends TabTreeItem>(tabs: T[], graph: Map<number, number>): T[] {

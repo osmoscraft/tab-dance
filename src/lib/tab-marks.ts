@@ -3,15 +3,19 @@ export async function getMarks(): Promise<Set<number>> {
   return new Set(marks ?? []);
 }
 
-export async function addMark(id: number) {
+export async function addMarks(ids: number[]) {
   const marks = (await chrome.storage.session.get("tabMarks")).tabMarks ?? [];
-  const updatedMarks = [...new Set([...marks, id])];
+  const updatedMarks = [...new Set([...marks, ...ids])];
   await chrome.storage.session.set({ tabMarks: updatedMarks });
 }
 
-export async function removeMark(removedId: number) {
+export async function removeMarks(removedIds: number[]) {
   const marks: number[] = (await chrome.storage.session.get("tabMarks")).tabMarks ?? [];
-  const updatedMarks = marks.filter((selfId) => selfId !== removedId);
+  const updatedMarks = marks.filter((selfId) => !removedIds.includes(selfId));
 
   await chrome.storage.session.set({ tabMarks: updatedMarks });
+}
+
+export async function clearMarks() {
+  await chrome.storage.session.set({ tabMarks: [] });
 }
