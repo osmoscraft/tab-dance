@@ -30,6 +30,14 @@ export async function handleTabCreated<T extends TabTreeItem>(tab: T) {
   }
 }
 
+export async function handleHighlighted() {
+  const systemHighlightedIds = new Set((await getTabs()).filter((tab) => tab.highlighted).map((tab) => tab.id));
+  const userHighlightIds = [...(await getMarks())];
+  if (userHighlightIds.some((id) => !systemHighlightedIds.has(id))) {
+    await clearMarks();
+  }
+}
+
 export async function toggleSelect() {
   const tabs = await getTabs();
   const marks = await getMarks();

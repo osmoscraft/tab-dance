@@ -2,6 +2,7 @@ import {
   cancelSelection,
   closeOthers,
   growTabs,
+  handleHighlighted,
   handleTabCreated,
   handleTabRemoved,
   moveTabs,
@@ -16,6 +17,7 @@ chrome.runtime.onInstalled.addListener(handleExtensionInstall);
 
 chrome.tabs.onCreated.addListener(handleTabCreated);
 chrome.tabs.onRemoved.addListener(handleTabRemoved);
+chrome.tabs.onHighlighted.addListener(handleHighlighted);
 
 async function handleCommand(command: string) {
   console.log(`Command: ${command}`);
