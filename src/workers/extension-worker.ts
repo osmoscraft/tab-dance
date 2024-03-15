@@ -5,6 +5,7 @@ import {
   handleHighlighted,
   handleTabCreated,
   handleTabRemoved,
+  mergeWindows,
   moveTabs,
   openTab,
   printDebugInfo,
@@ -26,9 +27,7 @@ async function handleCommand(command: string) {
       printDebugInfo();
       break;
     }
-    case "toggle-extension":
-    case "close-item":
-    case "toggle-grouping": {
+    case "toggle-extension": {
       console.log("Not implemented: Toggle extension");
       break;
     }
@@ -42,6 +41,10 @@ async function handleCommand(command: string) {
     }
     case "open-next": {
       openTab(1);
+      break;
+    }
+    case "merge-windows": {
+      mergeWindows();
       break;
     }
     case "move-previous": {

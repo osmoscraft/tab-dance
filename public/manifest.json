@@ -28,9 +28,6 @@
     "toggle-extension": {
       "description": "Toggle extension"
     },
-    "toggle-grouping": {
-      "description": "Toggle grouping"
-    },
     "close-others": {
       "description": "Close others"
     },
@@ -40,11 +37,8 @@
     "open-next": {
       "description": "Open next"
     },
-    "grow-previous": {
-      "description": "Grow previous"
-    },
-    "grow-next": {
-      "description": "Grow next"
+    "merge-windows": {
+      "description": "Merge windows"
     },
     "move-previous": {
       "description": "Move previous"

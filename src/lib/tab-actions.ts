@@ -8,6 +8,17 @@ export async function printDebugInfo() {
   console.log({ tabs, graph, marks });
 }
 
+export async function mergeWindows() {
+  const otherWindowTabs = await getOtherWindowTabs();
+  const currentWindowId = (await chrome.windows.getCurrent()).id;
+  if (!currentWindowId) return;
+
+  await chrome.tabs.move(otherWindowTabs.map((tab) => tab.id).filter(isDefined), {
+    windowId: currentWindowId,
+    index: -1,
+  });
+}
+
 export async function toggleGrouping() {
   const tabs = withTabOpener(await getTabs(), await getGraph());
   const groupedTabs = tabs.filter((tab) => tab.groupId !== chrome.tabGroups.TAB_GROUP_ID_NONE);
@@ -258,6 +269,10 @@ function isDefined<T>(value: T | undefined): value is T {
 
 async function getTabs() {
   return chrome.tabs.query({ currentWindow: true });
+}
+
+async function getOtherWindowTabs() {
+  return chrome.tabs.query({ windowType: "normal", currentWindow: false });
 }
 
 function lift<T>(thunk: () => T) {
