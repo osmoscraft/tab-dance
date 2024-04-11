@@ -1,5 +1,4 @@
 import {
-  clearSelections,
   closeCurrent,
   closeOthers,
   handleHighlighted,
@@ -62,10 +61,6 @@ async function handleCommand(command: string) {
     }
     case "toggle-selection": {
       toggleSelection();
-      break;
-    }
-    case "clear-selections": {
-      clearSelections();
       break;
     }
   }

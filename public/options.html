@@ -9,10 +9,10 @@
   </head>
   <body>
     <h1>Tab Dance</h1>
-    <div>
+    <menu>
       <button data-action="setup-keybindings">Change keyboard shortcuts</button>
       <button data-action="reload-extension">Reload extension</button>
-    </div>
+    </menu>
     <table>
       <thead>
         <tr>
@@ -22,6 +22,19 @@
       </thead>
       <tbody id="shortcuts-list"></tbody>
     </table>
+    <footer>
+      <h2>*Remarks</h2>
+      <ul>
+        <li data-remark-for="close-others">
+          <b>Close others</b>: The first execution will offload the other tabs from memory. The second execution will
+          close all remove the tabs.
+        </li>
+        <li data-remark-for="toggle-selection">
+          <b>Toggle selection</b>: Double execute the commands on the same tab within a short interval will clear all
+          selections.
+        </li>
+      </ul>
+    </footer>
     <script type="module" src="./options.js"></script>
   </body>
 </html>

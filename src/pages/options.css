@@ -6,6 +6,15 @@ body {
   justify-content: start;
   gap: 16px;
   margin-inline: 16px;
+  max-width: 40rem;
+}
+
+menu {
+  margin: 0;
+  padding: 0;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 h1 {
@@ -14,14 +23,31 @@ h1 {
 
 table {
   border: 1px solid ButtonBorder;
-  padding: 0 8px;
+  padding: 0 0px;
+  border-collapse: collapse;
 }
+
+tr :first-child {
+  width: 200px;
+}
+
 th,
 td {
-  padding: 8px 2px;
+  padding: 4px 16px;
   text-align: left;
 }
 
 td[data-not-set="true"] {
   opacity: 0.625;
+}
+
+th {
+  border-bottom: 1px solid ButtonBorder;
+}
+
+:where(thead, tbody) tr:first-child :where(th, td) {
+  padding-top: 8px;
+}
+:where(thead, tbody) tr:last-child :where(th, td) {
+  padding-bottom: 8px;
 }

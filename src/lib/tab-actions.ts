@@ -54,12 +54,31 @@ export async function toggleSelect() {
   const marks = await getMarks();
   const activeTab = tabs.find((tab) => tab.active);
   if (activeTab) {
+    if (handleDoubleToggle(400, activeTab.id!)) return;
+
     if (marks.has(activeTab.id!)) {
       await removeMarks([activeTab.id!]);
     } else {
       await addMarks([activeTab.id!]);
     }
   }
+}
+
+let toggleHistory: [id: number, timestamp: number][] = [];
+
+// 2 rapid toggles on the same tab within the interval will clear all selections
+function handleDoubleToggle(interval: number, activeTabId: number) {
+  const now = Date.now();
+  toggleHistory = [...toggleHistory, [activeTabId, now] as [number, number]].filter(
+    ([id, timestamp]) => id === activeTabId && now - timestamp < interval,
+  );
+  if (toggleHistory.length >= 2) {
+    clearSelections();
+    toggleHistory = [];
+    return true;
+  }
+
+  return false;
 }
 
 export async function clearSelections() {

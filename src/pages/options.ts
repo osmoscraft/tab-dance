@@ -9,13 +9,19 @@ function renderCommands(commands: chrome.commands.Command[]) {
     .filter((command) => command.description)
     .sort((a, b) => a.description!.localeCompare(b.description!));
 
+  const remarks = [...document.querySelectorAll(`[data-remark-for]`)].map((element) =>
+    element.getAttribute("data-remark-for"),
+  );
+
   const container = document.getElementById("shortcuts-list");
   if (!container) return;
   container.innerHTML = visibleCommands
     .map((command) => {
       const shortcut = command.shortcut;
+      const hasRemark = remarks.includes(command.name as any);
+
       return `<tr>
-    <td>${command.description}</td>
+    <td>${command.description}${hasRemark ? "*" : ""}</td>
     <td data-not-set="${!shortcut}">${shortcut || "Not set"}</td>
     </tr>`;
     })

@@ -51,9 +51,6 @@
     },
     "toggle-selection": {
       "description": "Toggle selection"
-    },
-    "clear-selection": {
-      "description": "Clear selections"
     }
   },
   "permissions": ["tabs", "tabGroups", "commands", "storage"]
