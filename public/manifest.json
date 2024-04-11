@@ -1,6 +1,6 @@
 {
   "name": "Tab Dance",
-  "description": "Speed up browsing and reduce tabs, with a single keypress",
+  "description": "Delightful tab management",
   "version": "0.0.1",
   "manifest_version": 3,
   "action": {

@@ -1,6 +1,6 @@
 # Tab Dance
 
-Keyboard shortcuts for tab management.
+Delightful tab management.
 
 ## Features
 
