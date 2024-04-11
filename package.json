@@ -5,9 +5,9 @@
   "scripts": {
     "dev": "rm -rf dist && concurrently --raw npm:dev:*",
     "build": "rm -rf dist && concurrently --raw npm:build:* && npm run pack",
-    "dev:pages": "npm run build:pages -- --watch",
-    "dev:assets": "npm run build:assets -- --watch",
-    "dev:worker": "npm run build:worker -- --watch --sourcemap=inline",
+    "dev:pages": "npm run build:pages -- --watch --define:globalThis.DEBUG=true",
+    "dev:assets": "npm run build:assets -- --watch --define:globalThis.DEBUG=true",
+    "dev:worker": "npm run build:worker -- --watch --sourcemap=inline --define:globalThis.DEBUG=true",
     "build:pages": "esbuild src/pages/*.ts --sourcemap --loader:.html=text --loader:.yaml=text --bundle --outdir=dist/unpacked",
     "build:assets": "node scripts/copy-assets.js --src public --target dist/unpacked",
     "build:worker": "esbuild src/workers/*.ts  --loader:.html=text --format=esm --bundle --outdir=dist/unpacked",

@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -8,9 +8,20 @@
     <link rel="stylesheet" href="./options.css" />
   </head>
   <body>
-    <h1>Options page</h1>
-    <button data-action="reload-extension">Reload extension</button>
-
+    <h1>Tab Dance</h1>
+    <div>
+      <button data-action="setup-keybindings">Change keyboard shortcuts</button>
+      <button data-action="reload-extension">Reload extension</button>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Command</th>
+          <th>Keyboard shortcut</th>
+        </tr>
+      </thead>
+      <tbody id="shortcuts-list"></tbody>
+    </table>
     <script type="module" src="./options.js"></script>
   </body>
 </html>

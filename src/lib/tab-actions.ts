@@ -67,6 +67,20 @@ export async function clearSelections() {
   await clearSelectionInternal(tabs);
 }
 
+export async function closeCurrent() {
+  const tabs = await getTabs();
+  const activeTab = tabs.find((tab) => tab.active);
+  if (activeTab) {
+    try {
+      await chrome.tabs.remove(activeTab.id!);
+    } catch {
+      // Due to "Error: Cannot remove NTP tab.", we need to populate the tab with a lightweight page first
+      await chrome.tabs.update(activeTab.id!, { url: "chrome://about" });
+      await chrome.tabs.remove(activeTab.id!);
+    }
+  }
+}
+
 export async function closeOthers() {
   const tabs = await getTabs();
 

@@ -1,5 +1,6 @@
 import {
   clearSelections,
+  closeCurrent,
   closeOthers,
   handleHighlighted,
   handleTabCreated,
@@ -11,10 +12,11 @@ import {
   toggleSelect as toggleSelection,
 } from "../lib/tab-actions";
 
-chrome.commands.onCommand.addListener(handleCommand);
-chrome.action.onClicked.addListener(handleActionClick);
-chrome.runtime.onInstalled.addListener(handleExtensionInstall);
+console.log(`DEBUG=${!!globalThis.DEBUG}`);
 
+chrome.action.onClicked.addListener(handleActionClick);
+chrome.commands.onCommand.addListener(handleCommand);
+chrome.runtime.onInstalled.addListener(handleExtensionInstall);
 chrome.tabs.onCreated.addListener(handleTabCreated);
 chrome.tabs.onRemoved.addListener(handleTabRemoved);
 chrome.tabs.onHighlighted.addListener(handleHighlighted);
@@ -28,6 +30,10 @@ async function handleCommand(command: string) {
   switch (command) {
     case "print-debug-info": {
       printDebugInfo();
+      break;
+    }
+    case "close-current": {
+      closeCurrent();
       break;
     }
     case "close-others": {
