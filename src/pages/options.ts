@@ -1,7 +1,5 @@
 import "./options.css";
 
-console.log(`DEBUG=${!!globalThis.DEBUG}`);
-
 chrome.commands.getAll(renderCommands);
 
 function renderCommands(commands: chrome.commands.Command[]) {

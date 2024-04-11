@@ -11,8 +11,6 @@ import {
   toggleSelect as toggleSelection,
 } from "../lib/tab-actions";
 
-console.log(`DEBUG=${!!globalThis.DEBUG}`);
-
 chrome.action.onClicked.addListener(handleActionClick);
 chrome.commands.onCommand.addListener(handleCommand);
 chrome.runtime.onInstalled.addListener(handleExtensionInstall);
