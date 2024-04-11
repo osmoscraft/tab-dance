@@ -53,5 +53,5 @@
       "description": "Toggle selection"
     }
   },
-  "permissions": ["tabs", "commands", "storage"]
+  "permissions": ["tabs", "commands"]
 }

@@ -1,11 +1,11 @@
-import { appendGraphEntry, getGraph, removeGraphEntry } from "./tab-graph";
+import { getGraph } from "./tab-graph";
 import { addMarks, clearMarks, getMarks, removeMarks } from "./tab-marks";
 
 export async function printDebugInfo() {
   const tabs = await getTabs();
-  const graph = await getGraph();
+  // const graph = await getGraph();
   const marks = await getMarks();
-  console.log({ tabs, graph, marks });
+  console.log({ tabs, marks });
 }
 
 export async function mergeWindows() {
@@ -38,7 +38,7 @@ export async function handleTabCreated<T extends TabTreeItem>(tab: T) {
       .catch(() => false);
     if (isNewTab) return;
 
-    await appendGraphEntry([tab.id, tab.openerTabId]);
+    // await appendGraphEntry([tab.id, tab.openerTabId]);
   }
 }
 
@@ -190,7 +190,7 @@ export async function growTabs(offset: number) {
 }
 
 export async function handleTabRemoved<T extends TabTreeItem>(tabId: number) {
-  await removeGraphEntry(tabId);
+  // await removeGraphEntry(tabId);
   await removeMarks([tabId]);
 }
 

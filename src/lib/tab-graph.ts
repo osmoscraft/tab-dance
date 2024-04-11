@@ -4,6 +4,8 @@
 // auto remove unreachable tab?
 // Remove graphEntry leads to broken links, e.g. remove tree root while children are still present
 
+// Note this module requires "storage" permission
+
 /**
  * Map: selfId -> openerId
  */
