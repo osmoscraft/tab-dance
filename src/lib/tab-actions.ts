@@ -19,6 +19,7 @@ export async function mergeWindows() {
   });
 }
 
+// this requires `tabGroups` permission
 export async function toggleGrouping() {
   const tabs = withTabOpener(await getTabs(), await getGraph());
   const groupedTabs = tabs.filter((tab) => tab.groupId !== chrome.tabGroups.TAB_GROUP_ID_NONE);
