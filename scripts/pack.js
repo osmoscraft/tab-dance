@@ -16,11 +16,19 @@ async function pack(dir) {
   console.log("[pack] extension dir", path.resolve(dir));
   const manifest = await readJson(path.resolve(dir, "manifest.json"));
   const { name, version } = manifest;
-  const outFilename = `${name.toLocaleLowerCase()}-${version}.chrome.zip`;
+  const outFilename = normalizeFilename(`${name.toLocaleLowerCase()}-${version}.chrome.zip`);
 
   await execAsync(`zip -r ../${outFilename} .`, { cwd: dir });
 
   console.log(`[pack] packed: ${outFilename}`);
+}
+
+/**
+ * replace spaces with "-"
+ * @param {string} name
+ */
+function normalizeFilename(name) {
+  return name.replace(/\s/g, "-");
 }
 
 /**
