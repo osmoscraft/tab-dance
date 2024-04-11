@@ -20,6 +20,10 @@ chrome.tabs.onRemoved.addListener(handleTabRemoved);
 chrome.tabs.onHighlighted.addListener(handleHighlighted);
 
 async function handleCommand(command: string) {
+  // TODO find ways to actually disable the extension temporarily in PWA
+  const currentWindow = await chrome.windows.getCurrent();
+  if (currentWindow.type !== "normal") return; // prevent extension in pwa
+
   console.log(`Command: ${command}`);
   switch (command) {
     case "print-debug-info": {
