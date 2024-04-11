@@ -1,7 +1,6 @@
 import {
-  cancelSelection,
+  clearSelections,
   closeOthers,
-  growTabs,
   handleHighlighted,
   handleTabCreated,
   handleTabRemoved,
@@ -25,10 +24,6 @@ async function handleCommand(command: string) {
   switch (command) {
     case "print-debug-info": {
       printDebugInfo();
-      break;
-    }
-    case "toggle-extension": {
-      console.log("Not implemented: Toggle extension");
       break;
     }
     case "close-others": {
@@ -55,20 +50,12 @@ async function handleCommand(command: string) {
       moveTabs(1);
       break;
     }
-    case "grow-previous": {
-      growTabs(-1);
-      break;
-    }
-    case "grow-next": {
-      growTabs(1);
-      break;
-    }
     case "toggle-selection": {
       toggleSelection();
       break;
     }
-    case "cancel-selection": {
-      cancelSelection();
+    case "clear-selections": {
+      clearSelections();
       break;
     }
   }

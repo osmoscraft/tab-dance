@@ -25,8 +25,8 @@
     "open_in_tab": true
   },
   "commands": {
-    "toggle-extension": {
-      "description": "Toggle extension"
+    "close-current": {
+      "description": "Close current"
     },
     "close-others": {
       "description": "Close others"
@@ -52,8 +52,8 @@
     "toggle-selection": {
       "description": "Toggle selection"
     },
-    "cancel-selection": {
-      "description": "Cancel selection"
+    "clear-selection": {
+      "description": "Clear selections"
     }
   },
   "permissions": ["tabs", "tabGroups", "commands", "storage"]

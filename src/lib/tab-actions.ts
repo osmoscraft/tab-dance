@@ -62,7 +62,7 @@ export async function toggleSelect() {
   }
 }
 
-export async function cancelSelection() {
+export async function clearSelections() {
   const tabs = await getTabs();
   await clearSelectionInternal(tabs);
 }
